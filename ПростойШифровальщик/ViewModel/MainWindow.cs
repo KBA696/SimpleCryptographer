@@ -70,10 +70,30 @@ namespace ПростойШифровальщик.ViewModel
             {
                 if (value == _Key) return;
                 _Key = value;
+                ИзмененПароль = true;
                 OnPropertyChanged();
             }
         }
 
+        string _RepeatPassword;
+        public string RepeatPassword
+        {
+            get { return _RepeatPassword; }
+            set
+            {
+                if (value == _RepeatPassword) return;
+                _RepeatPassword = value;
+
+                if (RepeatPassword== Key)
+                {
+                    ownedWindow.Close();
+                }
+
+                OnPropertyChanged();
+            }
+        }
+
+        bool ИзмененПароль = false;
 
         ICommand _OpenDecrypt;
         public ICommand OpenDecrypt
@@ -99,7 +119,7 @@ namespace ПростойШифровальщик.ViewModel
                                 }
                             }
                         }
-                        catch (System.IO.IOException )
+                        catch (System.IO.IOException)
                         {
                             MessageBox.Show("Фаил уже открыт какой-то программой");
 
@@ -125,6 +145,9 @@ namespace ПростойШифровальщик.ViewModel
                             }
 
                             UserData = DataFile.EncryptedClass?.BytesToClass<UserData>(SerializerFormat.Binary);
+
+                            ИзмененПароль = false;
+                            changedFile = false;
                         }
                         catch (Exception)
                         {
@@ -151,6 +174,8 @@ namespace ПростойШифровальщик.ViewModel
             }
         }
 
+
+        View.RepeatPassword ownedWindow;
         ICommand _KeyEnter;
         public ICommand KeyEnter
         {
@@ -158,6 +183,20 @@ namespace ПростойШифровальщик.ViewModel
             {
                 return _KeyEnter ?? (_KeyEnter = new RelayCommand<object>(a =>
                 {
+                    if (ИзмененПароль)
+                    {
+                        RepeatPassword = "";
+                        ownedWindow = new View.RepeatPassword() { DataContext = this, Owner = App.window };
+                        ownedWindow.ShowDialog();
+
+                        if (RepeatPassword != Key)
+                        {
+                            MessageBox.Show("Фаил не был сохранен. Пороли не совпали");
+                            return;
+                        }
+                    }
+                    
+
                     byte[] original = UserData?.ClassToBytes(SerializerFormat.Binary);
                     using (var rijAlg = Rijndael.Create())
                     {
@@ -186,6 +225,9 @@ namespace ПростойШифровальщик.ViewModel
                         readmeEntry = archive.CreateEntry("main");
                         DataFile.ClassToStream(readmeEntry.Open(), SerializerFormat.Binary);                        
                     }
+                    ИзмененПароль = false;
+                    changedFile = false;
+                    MessageBox.Show("Фаил успешно сохранен");
                 }));
             }
         }
@@ -222,6 +264,7 @@ namespace ПростойШифровальщик.ViewModel
             {
                 if (value == UserData.GeneralText) return;
                 UserData.GeneralText = value;
+                ChangedFile();
                 OnPropertyChanged();
             }
         }
@@ -234,6 +277,7 @@ namespace ПростойШифровальщик.ViewModel
             {
                 return _AddInformations ?? (_AddInformations = new RelayCommand<object>(a =>
                 {
+                    ChangedFile();
                     var tr = new InformationGroup();
                     UserData.InformationGroup.Add(tr);
                     SomeCollection.Add(new View.SectionDocument() { DataContext = new ViewModel.SectionDocument(tr, SomeCollection, UserData?.InformationGroup) });
@@ -255,14 +299,15 @@ namespace ПростойШифровальщик.ViewModel
                 {
                     if (changedFile)
                     {
-                        switch (MessageBox.Show("Фаил был изменен. Произвести сохранение новых данных?", "Фаил был изменен.", MessageBoxButton.YesNoCancel, MessageBoxImage.Error, MessageBoxResult.No))
+                        switch (MessageBox.Show("Были внесены или изменены какието данные но они небыли сохронены. Они будут утерены при закрытии. Сохранить фаил?", "Фаил был изменен.", MessageBoxButton.YesNoCancel, MessageBoxImage.Error, MessageBoxResult.No))
                         {
                             case MessageBoxResult.Yes:
-
+                                if (KeyEnter.CanExecute(null))
+                                {
+                                    KeyEnter.Execute(null);
+                                }
                                 break;
-                            case MessageBoxResult.No:
-                                break;
-                            default:
+                            case MessageBoxResult.Cancel:
                                 e.Cancel = true;
                                 break;
                         }

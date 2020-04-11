@@ -9,7 +9,7 @@
         
         
         mc:Ignorable="d"
-        Title="MainWindow" Height="600" Width="800">
+        Title="Простой шифровальщик" Height="600" Width="800">
         <c:Interaction.Triggers>
             <c:EventTrigger EventName="Closing">
             <MVVM:EventToCommand Command="{Binding Window_Closing1}" PassEventArgsToCommand="True" />
@@ -62,7 +62,7 @@
                         <ColumnDefinition/>
                         <ColumnDefinition Width="150"/>
                     </Grid.ColumnDefinitions>
-                    <TextBox Text="{Binding GeneralText}" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"  MinHeight="150" Grid.ColumnSpan="3"/>
+                    <TextBox Text="{Binding GeneralText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"  MinHeight="150" Grid.ColumnSpan="3"/>
                     <ListBox  ItemsSource="{Binding SomeCollection}" Margin="0,40,0,0" Grid.Row="2" Grid.ColumnSpan="3" HorizontalContentAlignment="Stretch" FlowDirection="LeftToRight" ScrollViewer.VerticalScrollBarVisibility="Auto" ScrollViewer.HorizontalScrollBarVisibility="Hidden">
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="ListBoxItem">
@@ -84,7 +84,7 @@
                     <Button Content="Сортировать по имени" Command="{Binding Sort}"  Margin="0,0,0,0" Grid.Row="2" VerticalAlignment="Top" Height="40"/>
                 </Grid>
             </TabItem>
-            <TabItem Header="Файлы">
+            <TabItem Header="Файлы" Visibility="Hidden">
                 <Grid Background="#FFE5E5E5">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="31*"/>

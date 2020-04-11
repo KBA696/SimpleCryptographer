@@ -1,4 +1,9 @@
-﻿using System.Windows;
+﻿using System;
+using System.Diagnostics;
+using System.Net;
+using System.Reflection;
+using System.Runtime.InteropServices;
+using System.Windows;
 
 namespace ПростойШифровальщик
 {
@@ -10,7 +15,7 @@ namespace ПростойШифровальщик
         //https://professorweb.ru/my/WPF/base_WPF/level5/5_12.php
         //https://www.codeproject.com/Articles/36412/Drag-and-Drop-ListBox
 
-
+        public static Window window;
 
         public App()
         {
@@ -21,7 +26,56 @@ namespace ПростойШифровальщик
                 e.Handled = true;
             };
 
-            new View.MainWindow() { DataContext = new ViewModel.MainWindow() }.Show();
+            //Проверяем обновление если есть интернет
+            (new System.Threading.Thread(delegate () {
+                try
+                {
+                    WebClient client = new WebClient() { Credentials = CredentialCache.DefaultNetworkCredentials };
+
+                    Version versionSite = new Version(client.DownloadString("https://kba696.github.io/SimpleCryptographer/version"));
+                    if (versionSite > Assembly.GetExecutingAssembly().GetName().Version)
+                    {
+                        if (MessageBox.Show("Доступна новая версия. Скачать её?", "Скачать новую версию???", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+                        {
+                            OpenBrowser("https://yadi.sk/d/k3dFaqVrHHADeQ");
+                        }
+                    }
+                }
+                catch { }
+            })).Start();
+
+            //Запускаем саму программу
+            window = new View.MainWindow() { DataContext = new ViewModel.MainWindow() };
+            window.Show();
+        }
+
+        void OpenBrowser(string url)
+        {
+            try
+            {
+                Process.Start(url);
+            }
+            catch
+            {
+                // hack because of this: https://github.com/dotnet/corefx/issues/10361
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                {
+                    url = url.Replace("&", "^&");
+                    Process.Start(new ProcessStartInfo("cmd", $"/c start {url}") { CreateNoWindow = true });
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+                {
+                    Process.Start("xdg-open", url);
+                }
+                else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                {
+                    Process.Start("open", url);
+                }
+                else
+                {
+                    throw;
+                }
+            }
         }
     }
 }
