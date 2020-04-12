@@ -103,6 +103,10 @@ namespace ПростойШифровальщик.ViewModel
                 return _OpenDecrypt ?? (_OpenDecrypt = new RelayCommand<object>(a =>
                 {
                     UserData = new UserData();
+
+                    DataFile = new DataFile();
+                    FilesData = new FilesData() { Name = "Главная" };
+                    root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(FilesData) };
                     if (System.IO.File.Exists(AddressFile))
                     {
                         try
@@ -142,6 +146,14 @@ namespace ПростойШифровальщик.ViewModel
 
                                 // Decrypt the bytes to a string.
                                 DataFile.EncryptedClass = Crypto.DecryptStringFromBytes(DataFile.EncryptedClass, rijAlg);
+
+                                if (DataFile.EncryptedFiles!=null)
+                                {
+                                    DataFile.EncryptedFiles = Crypto.DecryptStringFromBytes(DataFile.EncryptedFiles, rijAlg);
+                                    FilesData = DataFile.EncryptedFiles?.BytesToClass<FilesData>(SerializerFormat.Binary);
+
+                                    root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(FilesData) };
+                                }
                             }
 
                             UserData = DataFile.EncryptedClass?.BytesToClass<UserData>(SerializerFormat.Binary);
@@ -153,10 +165,6 @@ namespace ПростойШифровальщик.ViewModel
                         {
                             MessageBox.Show("Пароль не верен");
                         }
-                    }
-                    else
-                    {
-                        DataFile = new DataFile();
                     }
                     SomeCollection.Clear();
 
@@ -198,6 +206,7 @@ namespace ПростойШифровальщик.ViewModel
                     
 
                     byte[] original = UserData?.ClassToBytes(SerializerFormat.Binary);
+                    byte[] original1 = FilesData?.ClassToBytes(SerializerFormat.Binary);
                     using (var rijAlg = Rijndael.Create())
                     {
                         var salt = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
@@ -207,6 +216,7 @@ namespace ПростойШифровальщик.ViewModel
 
                         // Encrypt the string to an array of bytes.
                         DataFile.EncryptedClass = Crypto.EncryptStringToBytes(original, rijAlg);
+                        DataFile.EncryptedFiles = Crypto.EncryptStringToBytes(original1, rijAlg);
                     }
 
                     using (ZipArchive archive = new ZipArchive(File.Open(AddressFile, FileMode.OpenOrCreate), ZipArchiveMode.Update))
@@ -287,6 +297,241 @@ namespace ПростойШифровальщик.ViewModel
         #endregion
 
         #region Работа с файлами
+
+        FilesData FilesData;
+
+        ObservableCollection<FilesDataClass> _root;
+        public ObservableCollection<FilesDataClass> root
+        {
+            get { return _root; }
+            set
+            {
+                if (value == _root) return;
+                _root = value;
+                OnPropertyChanged();
+            }
+        }
+        string _names;
+        public string names
+        {
+            get { return _names; }
+            set
+            {
+                if (value == _names) return;
+                _names = value;
+                MainWindow.ChangedFile();
+                OnPropertyChanged();
+            }
+        }
+        FilesDataClass _Обозначение;
+        public FilesDataClass Обозначение
+        {
+            get { return _Обозначение; }
+            set
+            {
+                if (value == _Обозначение) return;
+                _Обозначение = value;
+                names = _Обозначение.Name;
+                OnPropertyChanged();
+            }
+        }
+
+        ICommand _AddFolder;
+        public ICommand AddFolder
+        {
+            get
+            {
+                return _AddFolder ?? (_AddFolder = new RelayCommand<object>(a =>
+                {
+                    var fdd = new FilesData() { Name = names };
+                    Обозначение.filesData.Items.Add(fdd);
+                    Обозначение.Items.Add(new FilesDataClass(fdd));
+                }));
+            }
+        }
+
+
+        ICommand _Rename;
+        public ICommand Rename
+        {
+            get
+            {
+                return _Rename ?? (_Rename = new RelayCommand<object>(a =>
+                {
+                    Обозначение.Name= names;
+                }));
+            }
+        }
+
+
+        ICommand _AddOp;
+        public ICommand AddOp
+        {
+            get
+            {
+                return _AddOp ?? (_AddOp = new RelayCommand<object>(a =>
+                {
+                    var Обозначение1 = this.Обозначение;
+                    OpenFileDialog dialog = new OpenFileDialog();
+                    dialog.Multiselect = true;
+                    if (dialog.ShowDialog() == true)
+                    {
+                        foreach (var te in dialog.FileNames)
+                        {
+                            FileInfo fileInf = new FileInfo(te);
+                            string adr = Обозначение1.Adre + @"\"+ DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss-fffffff") + fileInf.Name;
+                            var fdd = new FilesData() { Name = fileInf.Name, Adress= adr };
+                            Обозначение1.filesData.Items.Add(fdd);
+                            Обозначение1.Items.Add(new FilesDataClass(fdd));
+
+                            byte[] original1 = Serializer.FileToBytes(te);
+                            using (var rijAlg = Rijndael.Create())
+                            {
+                                var salt = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+                                Rfc2898DeriveBytes pdb = new Rfc2898DeriveBytes(Key, salt);
+                                rijAlg.Key = pdb.GetBytes(32);
+                                rijAlg.IV = pdb.GetBytes(16);
+
+                                // Encrypt the string to an array of bytes.
+                                original1 = Crypto.EncryptStringToBytes(original1, rijAlg);
+                            }
+
+                            //AddressFile = dialog.FileName;
+                            using (ZipArchive archive = new ZipArchive(File.Open(AddressFile, FileMode.OpenOrCreate), ZipArchiveMode.Update))
+                            {
+                                ZipArchiveEntry readmeEntry = archive.CreateEntry(adr);
+                                using (StreamWriter writer = new StreamWriter(readmeEntry.Open()))
+                                {
+                                    writer.BaseStream.Write(original1,0, original1.Length);
+                                }
+                            }
+                        }
+                    }
+
+                    if (KeyEnter.CanExecute(null))
+                    {
+                        KeyEnter.Execute(null);
+                    }
+                }));
+            }
+        }
+
+        ICommand _Del;
+        public ICommand Del
+        {
+            get
+            {
+                return _Del ?? (_Del = new RelayCommand<object>(a =>
+                {
+                    /*var Обозначение1 = this.Обозначение;
+
+                    if (string.IsNullOrEmpty(Обозначение1.Adress))
+                    {
+                        using (ZipArchive archive = new ZipArchive(File.Open(AddressFile, FileMode.OpenOrCreate), ZipArchiveMode.Update))
+                        {
+                            ZipArchiveEntry readmeEntry = archive.GetEntry(Обозначение1.Adress);
+
+                            readmeEntry?.Delete();
+                        }
+                    }
+
+                    foreach (var item in FilesData.Items)
+                    {
+                        if (item == Обозначение1.filesData)
+                        {
+
+                        }
+                    }
+
+                    var fdd = new FilesData() { Name = names };
+                    Обозначение.filesData.Items.Add(fdd);
+                    Обозначение.Items.Add(new FilesDataClass(fdd));
+
+
+                    if (KeyEnter.CanExecute(null))
+                    {
+                        KeyEnter.Execute(null);
+                    }*/
+                }));
+            }
+        }
+
+        ICommand _Extract;
+        public ICommand Extract
+        {
+            get
+            {
+                return _Extract ?? (_Extract = new RelayCommand<object>(a =>
+                {
+                    OpenFileDialog dialog = new OpenFileDialog();
+                    if (dialog.ShowDialog() == true)
+                    {
+                        var Обозначение1 = this.Обозначение;
+
+                        FileInfo fileInf = new FileInfo(dialog.FileName);
+
+                        setre(Обозначение1, fileInf.DirectoryName);
+                    }
+
+                    
+
+
+                }));
+            }
+        }
+
+        void setre(FilesDataClass s, string st)
+        {
+            if (string.IsNullOrEmpty(s.Adress))
+            {
+                Directory.CreateDirectory(st + @"\" + s.Name);
+            }
+            else
+            {
+                byte[] plaintext = null;
+                using (ZipArchive archive = new ZipArchive(File.Open(AddressFile, FileMode.Open), ZipArchiveMode.Update))
+                {
+                    ZipArchiveEntry readmeEntry = archive.GetEntry(s.Adress);
+                    if (readmeEntry != null)
+                    {
+
+                        plaintext = ReadAllBytes(readmeEntry.Open());
+
+                        byte[] ReadAllBytes(Stream instream)
+                        {
+                            if (instream is MemoryStream)
+                                return ((MemoryStream)instream).ToArray();
+
+                            using (var memoryStream = new MemoryStream())
+                            {
+                                instream.CopyTo(memoryStream);
+                                return memoryStream.ToArray();
+                            }
+                        }
+                    }
+                }
+
+                using (var rijAlg = Rijndael.Create())
+                {
+                    var salt = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+                    Rfc2898DeriveBytes pdb = new Rfc2898DeriveBytes(Key, salt);
+                    rijAlg.Key = pdb.GetBytes(32);
+                    rijAlg.IV = pdb.GetBytes(16);
+
+                    // Encrypt the string to an array of bytes.
+                    plaintext = Crypto.DecryptStringFromBytes(plaintext, rijAlg);
+                }
+
+
+                System.IO.File.WriteAllBytes(st + @"\" + s.Name, plaintext);
+            }
+
+            foreach (var item in s.Items)
+            {
+                setre(item, st + @"\" + s.Name);
+            }
+
+        }
 
         #endregion
 
