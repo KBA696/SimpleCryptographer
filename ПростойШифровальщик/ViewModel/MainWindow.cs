@@ -16,6 +16,12 @@ namespace ПростойШифровальщик.ViewModel
 {
     class MainWindow : NotificationObject
     {
+        public MainWindow()
+        {
+            root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(FilesData, null) };
+        }
+
+
         #region Верхняя часть
         /// <summary>
         /// Произошли изменения в файле
@@ -105,8 +111,8 @@ namespace ПростойШифровальщик.ViewModel
                     UserData = new UserData();
 
                     DataFile = new DataFile();
-                    FilesData = new FilesData() { Name = "Главная" };
-                    root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(FilesData) };
+                    FilesData = new FilesData() { Name = "0", Items = new ObservableCollection<FilesData>() { new FilesData() { Name = "Главная" } } };
+                    root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(FilesData,null) };
                     if (System.IO.File.Exists(AddressFile))
                     {
                         try
@@ -152,7 +158,7 @@ namespace ПростойШифровальщик.ViewModel
                                     DataFile.EncryptedFiles = Crypto.DecryptStringFromBytes(DataFile.EncryptedFiles, rijAlg);
                                     FilesData = DataFile.EncryptedFiles?.BytesToClass<FilesData>(SerializerFormat.Binary);
 
-                                    root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(FilesData) };
+                                    root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(FilesData,null) };
                                 }
                             }
 
@@ -298,7 +304,7 @@ namespace ПростойШифровальщик.ViewModel
 
         #region Работа с файлами
 
-        FilesData FilesData;
+        FilesData FilesData = new FilesData() { Name = "0", Items = new ObservableCollection<FilesData>() { new FilesData() { Name = "Главная" } } };
 
         ObservableCollection<FilesDataClass> _root;
         public ObservableCollection<FilesDataClass> root
@@ -331,7 +337,7 @@ namespace ПростойШифровальщик.ViewModel
             {
                 if (value == _Обозначение) return;
                 _Обозначение = value;
-                names = _Обозначение.Name;
+                names = _Обозначение?.Name;
                 OnPropertyChanged();
             }
         }
@@ -343,12 +349,37 @@ namespace ПростойШифровальщик.ViewModel
             {
                 return _AddFolder ?? (_AddFolder = new RelayCommand<object>(a =>
                 {
-                    var fdd = new FilesData() { Name = names };
-                    Обозначение.filesData.Items.Add(fdd);
-                    Обозначение.Items.Add(new FilesDataClass(fdd));
+                    if (Обозначение==null)
+                    {
+                        
+                        var fdd = new FilesData() { Name = names };
+                        root[0].filesData.Items.Add(fdd);
+                        root[0].Items.Add(new FilesDataClass(fdd, root[0]));
+                    }
+                    else
+                    {
+                        var fdd = new FilesData() { Name = names };
+                        Обозначение.filesData.Items.Add(fdd);
+                        Обозначение.Items.Add(new FilesDataClass(fdd, Обозначение));
+                    }
+                    ChangedFile();
+                },b=> string.IsNullOrEmpty(Обозначение?.Adress)));
+            }
+        }
+
+        ICommand _KeyEsc;
+        public ICommand KeyEsc
+        {
+            get
+            {
+                return _KeyEsc ?? (_KeyEsc = new RelayCommand<object>(a =>
+                {
+                    Обозначение.IsSelected = false;
+                    Обозначение = null;
                 }));
             }
         }
+
 
 
         ICommand _Rename;
@@ -359,6 +390,7 @@ namespace ПростойШифровальщик.ViewModel
                 return _Rename ?? (_Rename = new RelayCommand<object>(a =>
                 {
                     Обозначение.Name= names;
+                    ChangedFile();
                 }));
             }
         }
@@ -382,7 +414,7 @@ namespace ПростойШифровальщик.ViewModel
                             string adr = Обозначение1.Adre + @"\"+ DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss-fffffff") + fileInf.Name;
                             var fdd = new FilesData() { Name = fileInf.Name, Adress= adr };
                             Обозначение1.filesData.Items.Add(fdd);
-                            Обозначение1.Items.Add(new FilesDataClass(fdd));
+                            Обозначение1.Items.Add(new FilesDataClass(fdd, Обозначение1));
 
                             byte[] original1 = Serializer.FileToBytes(te);
                             using (var rijAlg = Rijndael.Create())
@@ -412,7 +444,7 @@ namespace ПростойШифровальщик.ViewModel
                     {
                         KeyEnter.Execute(null);
                     }
-                }));
+                }, b => string.IsNullOrEmpty(Обозначение?.Adress)));
             }
         }
 
@@ -423,36 +455,34 @@ namespace ПростойШифровальщик.ViewModel
             {
                 return _Del ?? (_Del = new RelayCommand<object>(a =>
                 {
-                    /*var Обозначение1 = this.Обозначение;
+                    var Обозначение1 = this.Обозначение;
+                    this.Обозначение = null;
+                    Dele(Обозначение1);
 
-                    if (string.IsNullOrEmpty(Обозначение1.Adress))
-                    {
-                        using (ZipArchive archive = new ZipArchive(File.Open(AddressFile, FileMode.OpenOrCreate), ZipArchiveMode.Update))
-                        {
-                            ZipArchiveEntry readmeEntry = archive.GetEntry(Обозначение1.Adress);
-
-                            readmeEntry?.Delete();
-                        }
-                    }
-
-                    foreach (var item in FilesData.Items)
-                    {
-                        if (item == Обозначение1.filesData)
-                        {
-
-                        }
-                    }
-
-                    var fdd = new FilesData() { Name = names };
-                    Обозначение.filesData.Items.Add(fdd);
-                    Обозначение.Items.Add(new FilesDataClass(fdd));
-
+                    Обозначение1.Del();
 
                     if (KeyEnter.CanExecute(null))
                     {
                         KeyEnter.Execute(null);
-                    }*/
+                    }
                 }));
+            }
+        }
+
+        void Dele(FilesDataClass Обозначение1)
+        {
+            if (!string.IsNullOrEmpty(Обозначение1.Adress))
+                {
+                    using (ZipArchive archive = new ZipArchive(File.Open(AddressFile, FileMode.OpenOrCreate), ZipArchiveMode.Update))
+                    {
+                        ZipArchiveEntry readmeEntry = archive.GetEntry(Обозначение1.Adress);
+
+                        readmeEntry?.Delete();
+                    }
+                }
+            foreach (var item in Обозначение1.Items)
+            {
+                Dele(item);
             }
         }
 
@@ -476,7 +506,7 @@ namespace ПростойШифровальщик.ViewModel
                     
 
 
-                }));
+                }, b => Обозначение!=null));
             }
         }
 
@@ -521,7 +551,6 @@ namespace ПростойШифровальщик.ViewModel
                     // Encrypt the string to an array of bytes.
                     plaintext = Crypto.DecryptStringFromBytes(plaintext, rijAlg);
                 }
-
 
                 System.IO.File.WriteAllBytes(st + @"\" + s.Name, plaintext);
             }

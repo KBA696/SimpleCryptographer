@@ -10,11 +10,11 @@
         
         mc:Ignorable="d"
         Title="Простой шифровальщик" Height="600" Width="800">
-        <c:Interaction.Triggers>
-            <c:EventTrigger EventName="Closing">
+    <c:Interaction.Triggers>
+        <c:EventTrigger EventName="Closing">
             <MVVM:EventToCommand Command="{Binding Window_Closing1}" PassEventArgsToCommand="True" />
-            </c:EventTrigger>
-        </c:Interaction.Triggers>
+        </c:EventTrigger>
+    </c:Interaction.Triggers>
     <Window.Resources>
         <Style x:Key="DGC_NumericColumnStyle" TargetType="TextBlock">
             <Setter Property="VerticalAlignment" Value="Center"/>
@@ -58,8 +58,8 @@
         <Style x:Key="{x:Type TreeViewItem}" TargetType="{x:Type TreeViewItem}">
             <Setter Property="Background" Value="Transparent"/>
             <Setter Property="Padding" Value="1,0,0,0"/>
-            <Setter Property="IsExpanded" Value="{Binding Детал.IsExpanded, Mode=TwoWay}" />
-            <Setter Property="IsSelected" Value="{Binding Детал.IsSelected, Mode=TwoWay}" />
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type TreeViewItem}">
@@ -213,10 +213,13 @@
                         <ColumnDefinition Width="1*"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="2" HorizontalAlignment="Left" Margin="10,0,0,0" Text="Обзор" TextWrapping="Wrap" VerticalAlignment="Center" Height="16"/>
-                    <TextBlock HorizontalAlignment="Left" Margin="10,0,0,0" Text="Максимальный размер файла с зашифрованными данными" TextWrapping="Wrap" VerticalAlignment="Center" Grid.ColumnSpan="2" Height="16" Width="332"/>
-                    <TextBox Grid.Column="1" HorizontalAlignment="Left" Margin="95,0,0,0" Text="Мб" TextWrapping="Wrap" VerticalAlignment="Center" Width="120" Height="20"/>
+                    <TextBlock HorizontalAlignment="Left" Margin="10,0,0,0" Text="Максимальный размер файла с зашифрованными данными" TextWrapping="Wrap" VerticalAlignment="Center" Grid.ColumnSpan="2" Height="16" Width="332" Visibility="Hidden"/>
+                    <TextBox Grid.Column="1" HorizontalAlignment="Left" Margin="95,0,0,0" Text="Мб" TextWrapping="Wrap" VerticalAlignment="Center" Width="120" Height="20" Visibility="Hidden"/>
 
-                    <TreeView Grid.Row="1" ItemsSource="{Binding root}">
+                    <TreeView Grid.Row="1" ItemsSource="{Binding root[0].Items}" >
+                        <TreeView.InputBindings>
+                            <KeyBinding Key="Esc" Command="{Binding KeyEsc}"/>
+                        </TreeView.InputBindings>
                         <c:Interaction.Behaviors>
                             <MVVM:BindableSelectedItemBehavior SelectedItem="{Binding Обозначение, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                         </c:Interaction.Behaviors>
@@ -229,16 +232,16 @@
                             </HierarchicalDataTemplate>
                         </TreeView.ItemTemplate>
                     </TreeView>
-                    
+
                     <Grid Grid.Column="1" Grid.Row="1">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="40"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="20"/>
                             <RowDefinition Height="40"/>
-                            <RowDefinition/>
+                            <RowDefinition Height="20"/>
+                            <RowDefinition Height="229*"/>
                         </Grid.RowDefinitions>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="1*"/>
@@ -249,12 +252,10 @@
                         <TextBox Margin="5,5,5,0" Text="{Binding names}" TextWrapping="Wrap" VerticalAlignment="Top" Height="22" Grid.ColumnSpan="4" Grid.Row="1"/>
                         <Button Content="Добавить папку" Command="{Binding AddFolder}"  Grid.ColumnSpan="2" Margin="5,5,5,5" Grid.Row="2"/>
                         <Button Content="Переименовать" Command="{Binding Rename}" Grid.Column="2" Margin="5,5,5,5" Grid.Row="2" Grid.ColumnSpan="2"/>
-                        <TextBox Margin="5,5,5,0" Text="TextBox" TextWrapping="Wrap" VerticalAlignment="Top" Height="22" Grid.ColumnSpan="3" Grid.Row="4"/>
-                        <Button Content="Обзор" Command="{Binding AddOp}"  Grid.Column="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="5,5,5,5" Grid.Row="4"/>
-                        <Button Content="Удалить" Command="{Binding Del}" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" Margin="5,5,5,5" Grid.Row="5" VerticalAlignment="Stretch"/>
+                        <Button Content="Добавить файлы" Command="{Binding AddOp}" Margin="5,5,5,5" Grid.Row="4" Grid.ColumnSpan="2"/>
+                        <Button Content="Удалить выбранное" Command="{Binding Del}" Margin="5,5,5,5" Grid.Row="4" Grid.Column="2" Grid.ColumnSpan="2"/>
                         <Button Content="Извлечь выбранное"  Command="{Binding Extract}" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" Margin="5,5,5,0" Grid.Row="6" VerticalAlignment="Top" Height="30"/>
                         <TextBlock Margin="5,5,5,0" Text="Имя папки или файла с расширением" TextWrapping="Wrap" VerticalAlignment="Top" Grid.ColumnSpan="4"/>
-                        <TextBlock Margin="5,5,0,0" Text="Адрес к файлам" TextWrapping="Wrap" VerticalAlignment="Top" Grid.ColumnSpan="4" Grid.Row="3"/>
                     </Grid>
                 </Grid>
             </TabItem>
