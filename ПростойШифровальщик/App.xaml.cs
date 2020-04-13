@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Drawing;
 using System.Net;
 using System.Reflection;
 using System.Runtime.InteropServices;
@@ -43,6 +44,7 @@ namespace ПростойШифровальщик
                 }
                 catch { }
             })).Start();
+
 
             //Запускаем саму программу
             window = new View.MainWindow() { DataContext = new ViewModel.MainWindow() };

@@ -27,7 +27,7 @@ namespace ПростойШифровальщик.ViewModel
             {
                 if (value == informationGroup.Name) return;
                 informationGroup.Name = value;
-                MainWindow.ChangedFile();
+                WindowCryptography.ChangedFile();
                 OnPropertyChanged();
             }
         }
@@ -39,7 +39,7 @@ namespace ПростойШифровальщик.ViewModel
             {
                 if (value == informationGroup.Informations) return;
                 informationGroup.Informations = value;
-                MainWindow.ChangedFile();
+                WindowCryptography.ChangedFile();
                 OnPropertyChanged();
             }
         }
@@ -51,7 +51,7 @@ namespace ПростойШифровальщик.ViewModel
             {
                 return _RemoteInformations ?? (_RemoteInformations = new RelayCommand<object>(a =>
                 {
-                    MainWindow.ChangedFile();
+                    WindowCryptography.ChangedFile();
                     SomeCollection.Remove(SomeCollection.FirstOrDefault(x => x.DataContext == this));
                     InformationGroup.Remove(informationGroup);
                 }));

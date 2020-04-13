@@ -39,7 +39,7 @@ namespace ПростойШифровальщик.ViewModel
             {
                 if (value == filesData.Adress) return;
                 filesData.Adress = value;
-                MainWindow.ChangedFile();
+                WindowCryptography.ChangedFile();
                 OnPropertyChanged();
             }
         }       
@@ -51,7 +51,7 @@ namespace ПростойШифровальщик.ViewModel
             {
                 if (value == filesData.Name) return;
                 filesData.Name = value;
-                MainWindow.ChangedFile();
+                WindowCryptography.ChangedFile();
                 OnPropertyChanged();
             }
         }

@@ -1,0 +1,188 @@
+﻿<UserControl x:Class="ПростойШифровальщик.View.WindowFileSelection"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:MVVM="clr-namespace:MVVM" 
+             xmlns:c="http://schemas.microsoft.com/xaml/behaviors"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800">
+    <UserControl.Resources>
+        <Style x:Key="DGC_NumericColumnStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="DGC_NumericColumnStyle1" TargetType="CheckBox">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+
+        <MVVM:TreeViewLineConverter x:Key="LineConverter"/>
+        <!-- Toggle Button -->
+        <Style x:Key="ExpandCollapseToggleStyle" TargetType="{x:Type ToggleButton}">
+            <Setter Property="Focusable" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ToggleButton}">
+                        <Grid Width="15" Height="13" SnapsToDevicePixels="True">
+                            <Rectangle Width="9" Height="9" Stroke="#919191" SnapsToDevicePixels="true">
+                                <Rectangle.Fill>
+                                    <LinearGradientBrush EndPoint="0.5,2" StartPoint="0.5,0">
+                                        <GradientStop Color="White" Offset="0"/>
+                                        <GradientStop Color="Silver" Offset="0.5"/>
+                                        <GradientStop Color="LightGray" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Rectangle.Fill>
+                            </Rectangle>
+                            <Rectangle x:Name="ExpandPath" Width="1" Height="5" Stroke="Black" SnapsToDevicePixels="true"/>
+                            <Rectangle Width="5" Height="1" Stroke="Black" SnapsToDevicePixels="true"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Visibility"  TargetName="ExpandPath" Value="Collapsed"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- TreeViewItem -->
+        <Style x:Key="{x:Type TreeViewItem}" TargetType="{x:Type TreeViewItem}">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="1,0,0,0"/>
+            <Setter Property="IsExpanded" Value="{Binding IsExpanded, Mode=TwoWay}" />
+            <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type TreeViewItem}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition MinWidth="19" Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+
+                            <!-- Connecting Lines -->
+                            <Rectangle x:Name="HorLn" Margin="9,1,0,0" Height="1" Stroke="#DCDCDC" SnapsToDevicePixels="True"/>
+                            <Rectangle x:Name="VerLn" Width="1" Stroke="#DCDCDC" Margin="0,0,1,0" Grid.RowSpan="2" SnapsToDevicePixels="true" Fill="White"/>
+                            <ToggleButton Margin="-1,0,0,0" x:Name="Expander" Style="{StaticResource ExpandCollapseToggleStyle}" IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}}" ClickMode="Press"/>
+                            <Border x:Name="Bd" Grid.Column="1" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                                <ContentPresenter x:Name="PART_Header" ContentSource="Header" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" MinWidth="20"/>
+                                <!-- <Border.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="Изменить" Command="{Binding FlushZoneActiveOrdersCommand1, Source={StaticResource perso3}}"/>
+                                    </ContextMenu>
+                                </Border.ContextMenu>-->
+                            </Border>
+                            <ItemsPresenter x:Name="ItemsHost" Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+
+                            <!-- This trigger changes the connecting lines if the item is the last in the list -->
+                            <DataTrigger Binding="{Binding Converter={StaticResource LineConverter}, RelativeSource={RelativeSource Self}}" Value="true">
+                                <Setter TargetName="VerLn" Property="Height" Value="9"/>
+                                <Setter TargetName="VerLn" Property="VerticalAlignment" Value="Top"/>
+                            </DataTrigger>
+                            <Trigger Property="IsExpanded" Value="false">
+                                <Setter TargetName="ItemsHost" Property="Visibility" Value="Collapsed"/>
+                            </Trigger>
+                            <Trigger Property="HasItems" Value="false">
+                                <Setter TargetName="Expander" Property="Visibility" Value="Hidden"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="HasHeader" Value="false"/>
+                                    <Condition Property="Width" Value="Auto"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="PART_Header" Property="MinWidth" Value="75"/>
+                            </MultiTrigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="HasHeader" Value="false"/>
+                                    <Condition Property="Height" Value="Auto"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="PART_Header" Property="MinHeight" Value="19"/>
+                            </MultiTrigger>
+                            <Trigger Property="IsSelected" Value="true">
+                                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource {x:Static SystemColors.HighlightBrushKey}}"/>
+                                <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.HighlightTextBrushKey}}"/>
+                            </Trigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsSelected" Value="true"/>
+                                    <Condition Property="IsSelectionActive" Value="false"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bd" Property="Background" Value="Green"/>
+                                <Setter Property="Foreground" Value="White"/>
+                            </MultiTrigger>
+                            <Trigger Property="IsEnabled" Value="false">
+                                <Setter Property="Foreground" Value="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="2"/>
+            <ColumnDefinition/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <TreeView Grid.Row="1" Margin="0,0,0,0" ItemsSource="{Binding UserFiles}" >
+            <c:Interaction.Behaviors>
+                <MVVM:BindableSelectedItemBehavior SelectedItem="{Binding Обозначение, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            </c:Interaction.Behaviors>
+            <TreeView.ItemTemplate>
+                <HierarchicalDataTemplate ItemsSource="{Binding Items, Mode=TwoWay}">
+                    <StackPanel Orientation="Horizontal">
+                        <Image Source="{Binding Иконка}"  Width="20" Height="20"/>
+                        <TextBlock Text="{Binding Name}"/>
+                    </StackPanel>
+                </HierarchicalDataTemplate>
+            </TreeView.ItemTemplate>
+        </TreeView>
+        <ListBox Grid.Row="1" Margin="0,0,0,0" Grid.Column="2"/>
+        <Grid Grid.ColumnSpan="3" Height="60">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="80"/>
+            </Grid.ColumnDefinitions>
+            <Button Content="←" HorizontalAlignment="Left" Margin="20,20,10,0" VerticalAlignment="Top" Height="30" Width="30"/>
+            <Button Content="→" HorizontalAlignment="Left" Margin="10,20,10,0" VerticalAlignment="Top" Grid.Column="1" Height="30" Width="30"/>
+            <TextBox HorizontalAlignment="Stretch" Margin="20,20,20,0" Text="TextBox" TextWrapping="Wrap" VerticalAlignment="Top" Grid.Column="2" Height="30" VerticalContentAlignment="Center"/>
+            <Button Content="Обновить" HorizontalAlignment="Left" Margin="0,20,0,0" VerticalAlignment="Top" Grid.Column="3" Height="30" Width="80"/>
+        </Grid>
+        <Grid Grid.Row="2" Grid.ColumnSpan="3">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="45*"/>
+                <RowDefinition Height="43*"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="1*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Button Command="{Binding CreateOrOpen}" Content="Открыть зашифрованный&#10;фаил" HorizontalAlignment="Right" Margin="0,20,40,20" VerticalAlignment="Top" Grid.Column="2" Grid.RowSpan="2" Height="40" Width="160" HorizontalContentAlignment="Center"/>
+            <TextBox HorizontalAlignment="Stretch" Margin="10,0,20,0" Text="TextBox" TextWrapping="Wrap" VerticalAlignment="Center" Grid.Column="1"/>
+            <PasswordBox HorizontalAlignment="Stretch" Margin="10,0,20,0" VerticalAlignment="Center" Grid.Row="1" Grid.Column="1"/>
+            <TextBlock HorizontalAlignment="Right" Margin="0,0,20,0" Text="Имя зашифрованного файла" TextWrapping="Wrap" VerticalAlignment="Center"/>
+            <TextBlock HorizontalAlignment="Right" Grid.Row="1" Text="Пароль от файла" TextWrapping="Wrap" VerticalAlignment="Center" Margin="0,0,20,0"/>
+        </Grid>
+        <GridSplitter Grid.Column="1" HorizontalAlignment="Stretch" Margin="0,0,0,0" Grid.Row="1" VerticalAlignment="Stretch"/>
+
+    </Grid>
+</UserControl>
