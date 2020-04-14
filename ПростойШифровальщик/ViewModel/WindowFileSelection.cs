@@ -1,8 +1,10 @@
 ﻿using MVVM;
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Drawing;
 using System.IO;
+using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -16,19 +18,32 @@ namespace ПростойШифровальщик.ViewModel
     class WindowFileSelection : NotificationObject
     {
         readonly MainWindow mainWindow;
+
+        static Dictionary<string, FileSystem> FileSystem = new Dictionary<string, FileSystem>();
+
+        public static FileSystem FileSystemS(string ПолныйПуть)
+        {
+            if (FileSystem.ContainsKey(ПолныйПуть))
+            {
+                return FileSystem[ПолныйПуть];
+            }
+            else
+            {
+                var name = Path.GetFileName(ПолныйПуть);
+                return FileSystem[ПолныйПуть] = new FileSystem(string.IsNullOrEmpty(name)? ПолныйПуть : name, ПолныйПуть);
+            }
+        }
+
         public WindowFileSelection(MainWindow mainWindow)
         {
             this.mainWindow = mainWindow;
 
             foreach (DriveInfo drive1 in DriveInfo.GetDrives())
             {
-                UserFiles.Add(new FileSystem() { Name = drive1.ToString(),  });
 
-                string[] allfolders = Directory.GetDirectories(drive1.ToString());
-                foreach (string folder in allfolders)
-                {
-                    Console.WriteLine(folder);
-                }
+                UserFiles.Add(FileSystemS(drive1.ToString()));
+
+                
             }
         }
 
@@ -59,10 +74,133 @@ namespace ПростойШифровальщик.ViewModel
             {
                 if (value == _SelectedUserFile) return;
                 _SelectedUserFile = value;
+                if (_SelectedUserFile!=null)
+                {
+                    FullPath = _SelectedUserFile.ПолныйАдрес;
+                    ОткрытьВыбранное();
+                }
+
+
                 OnPropertyChanged();
             }
         }
 
+        string _ДоFullPath;
+        string _FullPath;
+        /// <summary>
+        /// 
+        /// </summary>
+        public string FullPath
+        {
+            get { return _FullPath; }
+            set
+            {
+                if (value == _FullPath) return;
+                _FullPath = value;
+                
+                OnPropertyChanged();
+            }
+        }
+        ICommand _TextBoxLostFocus;
+        /// <summary>
+        /// Двойной клик
+        /// </summary>
+        public ICommand TextBoxLostFocus
+        {
+            get
+            {
+                return _TextBoxLostFocus ?? (_TextBoxLostFocus = new RelayCommand<object>(a =>
+                {
+                    FullPath = _ДоFullPath;
+                }));
+            }
+        }
+
+        ICommand _KeyEnter;
+        /// <summary>
+        /// Двойной клик
+        /// </summary>
+        public ICommand KeyEnter
+        {
+            get
+            {
+                return _KeyEnter ?? (_KeyEnter = new RelayCommand<object>(a =>
+                {
+                    if (Directory.Exists(FullPath))
+                    {
+                        //в самом конце лишние слэшь надо удолять
+                        if (SelectedUserFile != null)
+                        {
+                            SelectedUserFile.IsSelected = false;
+                        }
+                        ОткрытьВыбранное();
+                        SelectedUserFile.IsSelected = true;
+                    }
+                    else
+                    {
+                        MessageBox.Show("Папка не существует");
+                        if (TextBoxLostFocus.CanExecute(null))
+                        {
+                            TextBoxLostFocus.Execute(null);
+                        }
+                    }
+                }));
+            }
+        }
+
+        void ОткрытьВыбранное()
+        {
+            SelectedUserFile = WindowFilesFolders = FileSystemS(_FullPath);
+            _ДоFullPath = FullPath;
+        }
+
+        FileSystem _WindowFilesFolders;
+        /// <summary>
+        /// Выбранный фаил в TreeView
+        /// </summary>
+        public FileSystem WindowFilesFolders
+        {
+            get { return _WindowFilesFolders; }
+            set
+            {
+                if (value == _WindowFilesFolders) return;
+                _WindowFilesFolders = value;
+                OnPropertyChanged();
+            }
+        }
+
+        FileSystem _SelectedWindowFilesFolders;
+        /// <summary>
+        /// Выбранный фаил в TreeView
+        /// </summary>
+        public FileSystem SelectedWindowFilesFolders
+        {
+            get { return _SelectedWindowFilesFolders; }
+            set
+            {
+                if (value == _SelectedWindowFilesFolders) return;
+                _SelectedWindowFilesFolders = value;
+                if (System.IO.File.Exists(_SelectedWindowFilesFolders?.ПолныйАдрес))
+                {
+                    FileName = _SelectedWindowFilesFolders.Name;
+                }
+                OnPropertyChanged();
+            }
+        }
+        string _FileName;
+        /// <summary>
+        /// 
+        /// </summary>
+        public string FileName
+        {
+            get { return _FileName; }
+            set
+            {
+                if (value == _FileName) return;
+                _FileName = value;
+                OnPropertyChanged();
+            }
+        }
 
         ICommand _CreateOrOpen;
         /// <summary>
@@ -78,5 +216,31 @@ namespace ПростойШифровальщик.ViewModel
                 }));
             }
         }
+
+
+        ICommand _Ms;
+        /// <summary>
+        /// Двойной клик
+        /// </summary>
+        public ICommand Ms
+        {
+            get
+            {
+                return _Ms ?? (_Ms = new RelayCommand<object>(a =>
+                {
+                    FullPath = SelectedWindowFilesFolders.ПолныйАдрес;
+                    
+                    if (SelectedUserFile != null)
+                    {
+                        SelectedUserFile.IsSelected = false;
+                    }
+                    ОткрытьВыбранное();
+                    SelectedUserFile.IsSelected = true;
+                }));
+            }
+        }
+
+
+
     }
 }
