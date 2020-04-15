@@ -2,12 +2,9 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Drawing;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 using ПростойШифровальщик.Model;
 
 namespace ПростойШифровальщик.ViewModel
@@ -19,18 +16,26 @@ namespace ПростойШифровальщик.ViewModel
     {
         readonly MainWindow mainWindow;
 
-        static Dictionary<string, FileSystem> FileSystem = new Dictionary<string, FileSystem>();
+        /// <summary>
+        /// Держим в памяти все папки, которые открывались
+        /// </summary>
+        static Dictionary<string, FileSystem> fileSystem = new Dictionary<string, FileSystem>();
 
-        public static FileSystem FileSystemS(string ПолныйПуть)
+        /// <summary>
+        /// Извлекаем из памяти или добавляем в память если не было запрашиваемую директорию
+        /// </summary>
+        /// <param name="fullPath">Полный путь к ДИРЕКТОРИИ</param>
+        /// <returns>Директорию с файлами и директориями которые находятся в ней</returns>
+        public static FileSystem FileSystemValue(string fullPath)
         {
-            if (FileSystem.ContainsKey(ПолныйПуть))
+            if (fileSystem.ContainsKey(fullPath))
             {
-                return FileSystem[ПолныйПуть];
+                return fileSystem[fullPath];
             }
             else
             {
-                var name = Path.GetFileName(ПолныйПуть);
-                return FileSystem[ПолныйПуть] = new FileSystem(string.IsNullOrEmpty(name)? ПолныйПуть : name, ПолныйПуть);
+                var name = Path.GetFileName(fullPath);
+                return fileSystem[fullPath] = new FileSystem(string.IsNullOrEmpty(name) ? fullPath : name, fullPath);
             }
         }
 
@@ -38,16 +43,22 @@ namespace ПростойШифровальщик.ViewModel
         {
             this.mainWindow = mainWindow;
 
+            //Рабочий стол по умолчанию делаем открытым в основном ListBox
+            var desktop = FileSystemValue(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory));
+            UserFiles.Add(desktop);
+            SelectedUserFile = desktop;
+
+            //Добовляю остальные диски
             foreach (DriveInfo drive1 in DriveInfo.GetDrives())
             {
-
-                UserFiles.Add(FileSystemS(drive1.ToString()));
-
-                
+                UserFiles.Add(FileSystemValue(drive1.ToString()));
             }
         }
 
-
+        #region TreeView
+        /// <summary>
+        /// Перечень файлов на компе пользователя
+        /// </summary>
         ObservableCollection<FileSystem> _UserFiles = new ObservableCollection<FileSystem>();
         /// <summary>
         /// Перечень файлов на компе пользователя
@@ -63,6 +74,9 @@ namespace ПростойШифровальщик.ViewModel
             }
         }
 
+        /// <summary>
+        /// Выбранный фаил в TreeView
+        /// </summary>
         FileSystem _SelectedUserFile;
         /// <summary>
         /// Выбранный фаил в TreeView
@@ -74,89 +88,25 @@ namespace ПростойШифровальщик.ViewModel
             {
                 if (value == _SelectedUserFile) return;
                 _SelectedUserFile = value;
-                if (_SelectedUserFile!=null)
+
+                if (_SelectedUserFile != null)
                 {
                     FullPath = _SelectedUserFile.ПолныйАдрес;
                     ОткрытьВыбранное();
                 }
 
-
                 OnPropertyChanged();
             }
         }
+        #endregion
 
-        string _ДоFullPath;
-        string _FullPath;
+        #region ListBox
         /// <summary>
-        /// 
+        /// Основной ListBox с папками и файлами
         /// </summary>
-        public string FullPath
-        {
-            get { return _FullPath; }
-            set
-            {
-                if (value == _FullPath) return;
-                _FullPath = value;
-                
-                OnPropertyChanged();
-            }
-        }
-        ICommand _TextBoxLostFocus;
-        /// <summary>
-        /// Двойной клик
-        /// </summary>
-        public ICommand TextBoxLostFocus
-        {
-            get
-            {
-                return _TextBoxLostFocus ?? (_TextBoxLostFocus = new RelayCommand<object>(a =>
-                {
-                    FullPath = _ДоFullPath;
-                }));
-            }
-        }
-
-        ICommand _KeyEnter;
-        /// <summary>
-        /// Двойной клик
-        /// </summary>
-        public ICommand KeyEnter
-        {
-            get
-            {
-                return _KeyEnter ?? (_KeyEnter = new RelayCommand<object>(a =>
-                {
-                    if (Directory.Exists(FullPath))
-                    {
-                        //в самом конце лишние слэшь надо удолять
-                        if (SelectedUserFile != null)
-                        {
-                            SelectedUserFile.IsSelected = false;
-                        }
-                        ОткрытьВыбранное();
-                        SelectedUserFile.IsSelected = true;
-                    }
-                    else
-                    {
-                        MessageBox.Show("Папка не существует");
-                        if (TextBoxLostFocus.CanExecute(null))
-                        {
-                            TextBoxLostFocus.Execute(null);
-                        }
-                    }
-                }));
-            }
-        }
-
-        void ОткрытьВыбранное()
-        {
-            SelectedUserFile = WindowFilesFolders = FileSystemS(_FullPath);
-            _ДоFullPath = FullPath;
-        }
-
         FileSystem _WindowFilesFolders;
         /// <summary>
-        /// Выбранный фаил в TreeView
+        /// Основной ListBox с папками и файлами
         /// </summary>
         public FileSystem WindowFilesFolders
         {
@@ -169,9 +119,12 @@ namespace ПростойШифровальщик.ViewModel
             }
         }
 
+        /// <summary>
+        /// Выбранный фаил или папка из основного ListBox
+        /// </summary>
         FileSystem _SelectedWindowFilesFolders;
         /// <summary>
-        /// Выбранный фаил в TreeView
+        /// Выбранный фаил или папка из основного ListBox
         /// </summary>
         public FileSystem SelectedWindowFilesFolders
         {
@@ -180,16 +133,147 @@ namespace ПростойШифровальщик.ViewModel
             {
                 if (value == _SelectedWindowFilesFolders) return;
                 _SelectedWindowFilesFolders = value;
-                if (System.IO.File.Exists(_SelectedWindowFilesFolders?.ПолныйАдрес))
+                if (File.Exists(_SelectedWindowFilesFolders?.ПолныйАдрес))
                 {
                     FileName = _SelectedWindowFilesFolders.Name;
                 }
                 OnPropertyChanged();
             }
         }
+
+        ICommand _MouseDoubleClickListBox;
+        /// <summary>
+        /// Двойной клик в основном ListBox
+        /// </summary>
+        public ICommand MouseDoubleClickListBox
+        {
+            get
+            {
+                return _MouseDoubleClickListBox ?? (_MouseDoubleClickListBox = new RelayCommand<object>(a =>
+                {
+                    DirectoryInfo dir = new DirectoryInfo(SelectedWindowFilesFolders.ПолныйАдрес);
+                    //Если двойной клик был по папке то открываем её
+                    if (dir.Attributes == FileAttributes.Directory || dir.Attributes == (FileAttributes.ReadOnly | FileAttributes.Directory))
+                    {
+                        FullPath = SelectedWindowFilesFolders.ПолныйАдрес;
+
+                        if (SelectedUserFile != null)
+                        {
+                            SelectedUserFile.IsSelected = false;
+                        }
+                        ОткрытьВыбранное();
+                        SelectedUserFile.IsSelected = true;
+                    }
+
+
+                }));
+            }
+        }
+        #endregion
+
+        #region TextBox - адрес директории
+        /// <summary>
+        /// Адрес до ручного ввода и нажатия на enter
+        /// </summary>
+        string _FullPathBeforeManipulation;
+        /// <summary>
+        /// Путь до файла
+        /// </summary>
+        string _FullPath;
+        /// <summary>
+        /// Путь до файла
+        /// </summary>
+        public string FullPath
+        {
+            get { return _FullPath; }
+            set
+            {
+                if (value == _FullPath) return;
+                _FullPath = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(ButtonName));
+            }
+        }
+
+        ICommand _TextBoxLostFocus;
+        /// <summary>
+        /// Возвращаем прежний адрес если небыл нажат enter в текстовом поле с адресной строкой
+        /// </summary>
+        public ICommand TextBoxLostFocus
+        {
+            get
+            {
+                return _TextBoxLostFocus ?? (_TextBoxLostFocus = new RelayCommand<object>(a =>
+                {
+                    FullPath = _FullPathBeforeManipulation;
+                }));
+            }
+        }
+
+        ICommand _KeyEnter;
+        /// <summary>
+        /// Действие при нажатии на enter в текстовом поле с адресной строкой
+        /// </summary>
+        public ICommand KeyEnter
+        {
+            get
+            {
+                return _KeyEnter ?? (_KeyEnter = new RelayCommand<object>(a =>
+                {
+                    DirectoryInfo dir = new DirectoryInfo(FullPath);
+                    if (dir.Attributes == FileAttributes.Directory)
+                    {
+                        //Если выбрана директория то открываем её
+                        if (SelectedUserFile != null)
+                        {
+                            SelectedUserFile.IsSelected = false;
+                        }
+                        FullPath = dir.FullName.Trim('\\');
+                        ОткрытьВыбранное();
+                        SelectedUserFile.IsSelected = true;
+                    }
+                    if (dir.Attributes == FileAttributes.Archive)
+                    {
+                        //если был введен адрес к файлу то открываем директорию в которой лежал фаил и добовляем имя файла в текстбокс
+                        if (SelectedUserFile != null)
+                        {
+                            SelectedUserFile.IsSelected = false;
+                        }
+
+                        FullPath = dir.Parent.ToString().Trim('\\');
+                        ОткрытьВыбранное();
+                        FileName = dir.Name;
+                    }
+                    else if ((int)dir.Attributes == -1)
+                    {
+                        //если не существует фаил или папка возвращаем то что было
+                        MessageBox.Show("Папка или фаил не существует");
+                        if (TextBoxLostFocus.CanExecute(null))
+                        {
+                            TextBoxLostFocus.Execute(null);
+                        }
+                    }
+                }));
+            }
+        }
+
+        /// <summary>
+        /// открываем в Основной ListBox папку и в TreeView делаем её выделенной 
+        /// </summary>
+        void ОткрытьВыбранное()
+        {
+            SelectedUserFile = WindowFilesFolders = FileSystemValue(_FullPath);
+            _FullPathBeforeManipulation = FullPath;
+        }
+        #endregion
+
+        #region Имя файла, пароль и кнопка открыть
+        /// <summary>
+        /// Имя файла который надо разшифровать
+        /// </summary>
         string _FileName;
         /// <summary>
-        /// 
+        /// Имя файла который надо разшифровать
         /// </summary>
         public string FileName
         {
@@ -199,6 +283,44 @@ namespace ПростойШифровальщик.ViewModel
                 if (value == _FileName) return;
                 _FileName = value;
                 OnPropertyChanged();
+                OnPropertyChanged(nameof(ButtonName));
+            }
+        }
+
+        /// <summary>
+        /// Пароль от файла
+        /// </summary>
+        string _Key = "";
+        /// <summary>
+        /// Пароль от файла
+        /// </summary>
+        public string Key
+        {
+            get { return _Key; }
+            set
+            {
+                if (value == _Key) return;
+                _Key = value;
+                OnPropertyChanged();
+            }
+        }
+
+        /// <summary>
+        /// Название кнопки
+        /// </summary>
+        public string ButtonName
+        {
+            get
+            {
+                DirectoryInfo dir = new DirectoryInfo(FullPath + "\\" + FileName);
+                if ((int)dir.Attributes == -1 || string.IsNullOrEmpty(FileName))
+                {
+                    return "Создать зашифрованный\nфаил";
+                }
+                else
+                {
+                    return "Открыть зашифрованный\nфаил";
+                }
             }
         }
 
@@ -212,35 +334,13 @@ namespace ПростойШифровальщик.ViewModel
             {
                 return _CreateOrOpen ?? (_CreateOrOpen = new RelayCommand<object>(a =>
                 {
-                    mainWindow.Content = new View.WindowCryptography() { DataContext = new WindowCryptography(mainWindow) };
-                }));
-            }
-        }
-
-
-        ICommand _Ms;
-        /// <summary>
-        /// Двойной клик
-        /// </summary>
-        public ICommand Ms
-        {
-            get
-            {
-                return _Ms ?? (_Ms = new RelayCommand<object>(a =>
-                {
-                    FullPath = SelectedWindowFilesFolders.ПолныйАдрес;
-                    
-                    if (SelectedUserFile != null)
+                    if (!string.IsNullOrEmpty(FullPath) && !string.IsNullOrEmpty(FileName))
                     {
-                        SelectedUserFile.IsSelected = false;
+                        mainWindow.Content = new View.WindowCryptography() { DataContext = new WindowCryptography(mainWindow, FullPath + "\\" + FileName, Key) };
                     }
-                    ОткрытьВыбранное();
-                    SelectedUserFile.IsSelected = true;
-                }));
+                }, b => !string.IsNullOrEmpty(FullPath) && !string.IsNullOrEmpty(FileName)));
             }
         }
-
-
-
+        #endregion
     }
 }

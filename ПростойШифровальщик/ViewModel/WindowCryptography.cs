@@ -17,15 +17,103 @@ namespace ПростойШифровальщик.ViewModel
     class WindowCryptography : NotificationObject
     {
         readonly MainWindow mainWindow;
+        readonly string addressFile;
+        readonly string key;
 
-        public WindowCryptography(MainWindow mainWindow)
+        public WindowCryptography(MainWindow mainWindow, string addressFile, string key)
         {
             this.mainWindow = mainWindow;
+            this.addressFile = addressFile;
+            this.key = key;
             root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(FilesData, null) };
+
+
+
+            UserData = new UserData();
+
+            DataFile = new DataFile();
+            FilesData = new FilesData() { Name = "0", Items = new ObservableCollection<FilesData>() { new FilesData() { Name = "Главная" } } };
+            root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(FilesData, null) };
+            if (System.IO.File.Exists(addressFile))
+            {
+                try
+                {
+                    using (ZipArchive archive = new ZipArchive(File.Open(addressFile, FileMode.Open), ZipArchiveMode.Update))
+                    {
+                        ZipArchiveEntry readmeEntry = archive.GetEntry("main");
+                        if (readmeEntry != null)
+                        {
+                            using (StreamReader writer = new StreamReader(readmeEntry.Open()))
+                            {
+                                DataFile = new DataFile().StreamToClass(writer.BaseStream, SerializerFormat.Binary);
+                            }
+                        }
+                    }
+                }
+                catch (System.IO.IOException)
+                {
+                    MessageBox.Show("Фаил уже открыт какой-то программой");
+
+                }
+                catch
+                {
+                    MessageBox.Show("Фаил не удалось прочитать");
+                    DataFile = new DataFile();
+                }
+
+
+                try
+                {
+                    using (var rijAlg = Rijndael.Create())
+                    {
+                        var salt = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+                        Rfc2898DeriveBytes pdb = new Rfc2898DeriveBytes(key, salt);
+                        rijAlg.Key = pdb.GetBytes(32);
+                        rijAlg.IV = pdb.GetBytes(16);
+
+                        // Decrypt the bytes to a string.
+                        DataFile.EncryptedClass = Crypto.DecryptStringFromBytes(DataFile.EncryptedClass, rijAlg);
+
+                        if (DataFile.EncryptedFiles != null)
+                        {
+                            DataFile.EncryptedFiles = Crypto.DecryptStringFromBytes(DataFile.EncryptedFiles, rijAlg);
+                            FilesData = DataFile.EncryptedFiles?.BytesToClass<FilesData>(SerializerFormat.Binary);
+
+                            root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(FilesData, null) };
+                        }
+                    }
+
+                    UserData = DataFile.EncryptedClass?.BytesToClass<UserData>(SerializerFormat.Binary);
+
+                    changedFile = false;
+                }
+                catch (Exception)
+                {
+                    MessageBox.Show("Пароль не верен");
+                }
+            }
+            SomeCollection.Clear();
+
+            if (UserData.InformationGroup == null)
+            {
+                UserData.InformationGroup = new System.Collections.Generic.List<InformationGroup>();
+            }
+
+            foreach (var item in UserData.InformationGroup)
+            {
+                SomeCollection.Add(new View.SectionDocument() { DataContext = new ViewModel.SectionDocument(item, SomeCollection, UserData?.InformationGroup) });
+            }
+            OnPropertyChanged(nameof(GeneralText));
+
+            if (!System.IO.File.Exists(addressFile))
+            {
+                if (KeyEnter.CanExecute(null))
+                {
+                    KeyEnter.Execute(null);
+                }
+            }
         }
 
-
-        #region Верхняя часть
         /// <summary>
         /// Произошли изменения в файле
         /// </summary>
@@ -36,163 +124,10 @@ namespace ПростойШифровальщик.ViewModel
         /// </summary>
         public static void ChangedFile() { changedFile = true; }
 
-        string _AddressFile;
-        /// <summary>
-        /// Расположение файла с которым производится работа
-        /// </summary>
-        public string AddressFile
-        {
-            get { return _AddressFile; }
-            set
-            {
-                if (value == _AddressFile) return;
-                _AddressFile = value;
-                OnPropertyChanged();
-            }
-        }
-
-        /// <summary>
-        /// Достаем из диологового окна путь к файлу с которым надо проработать
-        /// </summary>
-        ICommand _FileOverview;
-        public ICommand FileOverview
-        {
-            get
-            {
-                return _FileOverview ?? (_FileOverview = new RelayCommand<object>(a =>
-                {
-                    SaveFileDialog dialog = new SaveFileDialog();
-                    if (dialog.ShowDialog() == true)
-                    {
-                        AddressFile = dialog.FileName;
-                    }
-                }));
-            }
-        }
+        #region Верхняя часть
 
 
-        string _Key;
-        public string Key
-        {
-            get { return _Key; }
-            set
-            {
-                if (value == _Key) return;
-                _Key = value;
-                ИзмененПароль = true;
-                OnPropertyChanged();
-            }
-        }
 
-        string _RepeatPassword;
-        public string RepeatPassword
-        {
-            get { return _RepeatPassword; }
-            set
-            {
-                if (value == _RepeatPassword) return;
-                _RepeatPassword = value;
-
-                if (RepeatPassword == Key)
-                {
-                    ownedWindow.Close();
-                }
-
-                OnPropertyChanged();
-            }
-        }
-
-        bool ИзмененПароль = false;
-
-        ICommand _OpenDecrypt;
-        public ICommand OpenDecrypt
-        {
-            get
-            {
-                return _OpenDecrypt ?? (_OpenDecrypt = new RelayCommand<object>(a =>
-                {
-                    UserData = new UserData();
-
-                    DataFile = new DataFile();
-                    FilesData = new FilesData() { Name = "0", Items = new ObservableCollection<FilesData>() { new FilesData() { Name = "Главная" } } };
-                    root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(FilesData, null) };
-                    if (System.IO.File.Exists(AddressFile))
-                    {
-                        try
-                        {
-                            using (ZipArchive archive = new ZipArchive(File.Open(AddressFile, FileMode.Open), ZipArchiveMode.Update))
-                            {
-                                ZipArchiveEntry readmeEntry = archive.GetEntry("main");
-                                if (readmeEntry != null)
-                                {
-                                    using (StreamReader writer = new StreamReader(readmeEntry.Open()))
-                                    {
-                                        DataFile = new DataFile().StreamToClass(writer.BaseStream, SerializerFormat.Binary);
-                                    }
-                                }
-                            }
-                        }
-                        catch (System.IO.IOException)
-                        {
-                            MessageBox.Show("Фаил уже открыт какой-то программой");
-
-                        }
-                        catch
-                        {
-                            MessageBox.Show("Фаил не удалось прочитать");
-                            DataFile = new DataFile();
-                        }
-
-
-                        try
-                        {
-                            using (var rijAlg = Rijndael.Create())
-                            {
-                                var salt = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-                                Rfc2898DeriveBytes pdb = new Rfc2898DeriveBytes(Key, salt);
-                                rijAlg.Key = pdb.GetBytes(32);
-                                rijAlg.IV = pdb.GetBytes(16);
-
-                                // Decrypt the bytes to a string.
-                                DataFile.EncryptedClass = Crypto.DecryptStringFromBytes(DataFile.EncryptedClass, rijAlg);
-
-                                if (DataFile.EncryptedFiles != null)
-                                {
-                                    DataFile.EncryptedFiles = Crypto.DecryptStringFromBytes(DataFile.EncryptedFiles, rijAlg);
-                                    FilesData = DataFile.EncryptedFiles?.BytesToClass<FilesData>(SerializerFormat.Binary);
-
-                                    root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(FilesData, null) };
-                                }
-                            }
-
-                            UserData = DataFile.EncryptedClass?.BytesToClass<UserData>(SerializerFormat.Binary);
-
-                            ИзмененПароль = false;
-                            changedFile = false;
-                        }
-                        catch (Exception)
-                        {
-                            MessageBox.Show("Пароль не верен");
-                        }
-                    }
-                    SomeCollection.Clear();
-
-                    if (UserData.InformationGroup == null)
-                    {
-                        UserData.InformationGroup = new System.Collections.Generic.List<InformationGroup>();
-                    }
-
-                    foreach (var item in UserData.InformationGroup)
-                    {
-                        SomeCollection.Add(new View.SectionDocument() { DataContext = new ViewModel.SectionDocument(item, SomeCollection, UserData?.InformationGroup) });
-                    }
-                    OnPropertyChanged(nameof(GeneralText));
-                }));
-            }
-        }
-
-
-        View.RepeatPassword ownedWindow;
         ICommand _KeyEnter;
         public ICommand KeyEnter
         {
@@ -200,18 +135,18 @@ namespace ПростойШифровальщик.ViewModel
             {
                 return _KeyEnter ?? (_KeyEnter = new RelayCommand<object>(a =>
                 {
-                    if (ИзмененПароль)
+                    /*if (ИзмененПароль)
                     {
                         RepeatPassword = "";
                         ownedWindow = new View.RepeatPassword() { DataContext = this, Owner = App.window };
                         ownedWindow.ShowDialog();
 
-                        if (RepeatPassword != Key)
+                        if (RepeatPassword != key)
                         {
                             MessageBox.Show("Фаил не был сохранен. Пороли не совпали");
                             return;
                         }
-                    }
+                    }*/
 
 
                     byte[] original = UserData?.ClassToBytes(SerializerFormat.Binary);
@@ -219,7 +154,7 @@ namespace ПростойШифровальщик.ViewModel
                     using (var rijAlg = Rijndael.Create())
                     {
                         var salt = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-                        Rfc2898DeriveBytes pdb = new Rfc2898DeriveBytes(Key, salt);
+                        Rfc2898DeriveBytes pdb = new Rfc2898DeriveBytes(key, salt);
                         rijAlg.Key = pdb.GetBytes(32);
                         rijAlg.IV = pdb.GetBytes(16);
 
@@ -228,7 +163,7 @@ namespace ПростойШифровальщик.ViewModel
                         DataFile.EncryptedFiles = Crypto.EncryptStringToBytes(original1, rijAlg);
                     }
 
-                    using (ZipArchive archive = new ZipArchive(File.Open(AddressFile, FileMode.OpenOrCreate), ZipArchiveMode.Update))
+                    using (ZipArchive archive = new ZipArchive(File.Open(addressFile, FileMode.OpenOrCreate), ZipArchiveMode.Update))
                     {
                         ZipArchiveEntry readmeEntry = archive.GetEntry("main");
                         /*Вариант дозаписать
@@ -244,7 +179,6 @@ namespace ПростойШифровальщик.ViewModel
                         readmeEntry = archive.CreateEntry("main");
                         DataFile.ClassToStream(readmeEntry.Open(), SerializerFormat.Binary);
                     }
-                    ИзмененПароль = false;
                     changedFile = false;
                     MessageBox.Show("Фаил успешно сохранен");
                 }));
@@ -423,7 +357,7 @@ namespace ПростойШифровальщик.ViewModel
                             using (var rijAlg = Rijndael.Create())
                             {
                                 var salt = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-                                Rfc2898DeriveBytes pdb = new Rfc2898DeriveBytes(Key, salt);
+                                Rfc2898DeriveBytes pdb = new Rfc2898DeriveBytes(key, salt);
                                 rijAlg.Key = pdb.GetBytes(32);
                                 rijAlg.IV = pdb.GetBytes(16);
 
@@ -432,7 +366,7 @@ namespace ПростойШифровальщик.ViewModel
                             }
 
                             //AddressFile = dialog.FileName;
-                            using (ZipArchive archive = new ZipArchive(File.Open(AddressFile, FileMode.OpenOrCreate), ZipArchiveMode.Update))
+                            using (ZipArchive archive = new ZipArchive(File.Open(addressFile, FileMode.OpenOrCreate), ZipArchiveMode.Update))
                             {
                                 ZipArchiveEntry readmeEntry = archive.CreateEntry(adr);
                                 using (StreamWriter writer = new StreamWriter(readmeEntry.Open()))
@@ -476,7 +410,7 @@ namespace ПростойШифровальщик.ViewModel
         {
             if (!string.IsNullOrEmpty(Обозначение1.Adress))
             {
-                using (ZipArchive archive = new ZipArchive(File.Open(AddressFile, FileMode.OpenOrCreate), ZipArchiveMode.Update))
+                using (ZipArchive archive = new ZipArchive(File.Open(addressFile, FileMode.OpenOrCreate), ZipArchiveMode.Update))
                 {
                     ZipArchiveEntry readmeEntry = archive.GetEntry(Обозначение1.Adress);
 
@@ -522,7 +456,7 @@ namespace ПростойШифровальщик.ViewModel
             else
             {
                 byte[] plaintext = null;
-                using (ZipArchive archive = new ZipArchive(File.Open(AddressFile, FileMode.Open), ZipArchiveMode.Update))
+                using (ZipArchive archive = new ZipArchive(File.Open(addressFile, FileMode.Open), ZipArchiveMode.Update))
                 {
                     ZipArchiveEntry readmeEntry = archive.GetEntry(s.Adress);
                     if (readmeEntry != null)
@@ -547,7 +481,7 @@ namespace ПростойШифровальщик.ViewModel
                 using (var rijAlg = Rijndael.Create())
                 {
                     var salt = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-                    Rfc2898DeriveBytes pdb = new Rfc2898DeriveBytes(Key, salt);
+                    Rfc2898DeriveBytes pdb = new Rfc2898DeriveBytes(key, salt);
                     rijAlg.Key = pdb.GetBytes(32);
                     rijAlg.IV = pdb.GetBytes(16);
 
@@ -576,19 +510,31 @@ namespace ПростойШифровальщик.ViewModel
                 {
                     if (changedFile)
                     {
-                        switch (MessageBox.Show("Были внесены или изменены какието данные но они небыли сохронены. Они будут утерены при закрытии. Сохранить фаил?", "Фаил был изменен.", MessageBoxButton.YesNoCancel, MessageBoxImage.Error, MessageBoxResult.No))
-                        {
-                            case MessageBoxResult.Yes:
-                                if (KeyEnter.CanExecute(null))
-                                {
-                                    KeyEnter.Execute(null);
-                                }
-                                break;
-                            case MessageBoxResult.Cancel:
-                                e.Cancel = true;
-                                break;
-                        }
+                    switch (MessageBox.Show("Были внесены или изменены какието данные но они небыли сохронены. Они будут утерены при закрытии. Сохранить фаил?", "Фаил был изменен.", MessageBoxButton.YesNoCancel, MessageBoxImage.Error, MessageBoxResult.No))
+                    {
+                        case MessageBoxResult.Yes:
+                            if (KeyEnter.CanExecute(null))
+                            {
+                                KeyEnter.Execute(null);
+                            }
+                            break;
+                        case MessageBoxResult.Cancel:
+                            e.Cancel = true;
+                            break;
                     }
+                    }
+                }));
+            }
+        }
+
+        ICommand _LaunchWindow;
+        public ICommand LaunchWindow
+        {
+            get
+            {
+                return _LaunchWindow ?? (_LaunchWindow = new RelayCommand<CancelEventArgs>(e =>
+                {
+                    mainWindow.Content = new View.WindowFileSelection() { DataContext = new WindowFileSelection(mainWindow) };
                 }));
             }
         }

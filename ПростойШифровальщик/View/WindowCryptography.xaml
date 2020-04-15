@@ -6,12 +6,11 @@
          
              xmlns:MVVM="clr-namespace:MVVM" 
              xmlns:c="http://schemas.microsoft.com/xaml/behaviors"
-
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800">
     <c:Interaction.Triggers>
         <c:EventTrigger EventName="Closing">
-            <MVVM:EventToCommand Command="{Binding Window_Closing1}" PassEventArgsToCommand="True" />
+            <MVVM:EventToCommand Command="{Binding Path=Window_Closing1}" PassEventArgsToCommand="True" />
         </c:EventTrigger>
     </c:Interaction.Triggers>
     <UserControl.Resources>
@@ -137,38 +136,11 @@
     </UserControl.Resources>
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
             <RowDefinition/>
-            <RowDefinition Height="20"/>
+            <RowDefinition Height="50"/>
         </Grid.RowDefinitions>
 
-        <Grid Margin="0,0,0,0" Grid.Column="3">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition/>
-                <ColumnDefinition Width="100"/>
-                <ColumnDefinition Width="100"/>
-            </Grid.ColumnDefinitions>
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="30"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="30"/>
-                <RowDefinition Height="10"/>
-            </Grid.RowDefinitions>
-            <Button Content="Сохранить" Command="{Binding KeyEnter}" Margin="5,0,5,0" VerticalAlignment="Center" Height="22" Grid.Row="3" Grid.Column="2"/>
-            <PasswordBox Margin="10,0,10,0" VerticalAlignment="Center" Grid.Row="3">
-                <c:Interaction.Behaviors>
-                    <MVVM:PasswordBoxBehavior Password="{Binding Key, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                </c:Interaction.Behaviors>
-            </PasswordBox>
-            <Button Content="Обзор файла" Command="{Binding FileOverview}" VerticalAlignment="Center" Grid.Column="2" Margin="5,0,5,0" Grid.Row="1"/>
-            <TextBox Margin="10,0,10,0" Text="{Binding AddressFile}" TextWrapping="Wrap" VerticalAlignment="Center" Grid.ColumnSpan="2" VerticalContentAlignment="Center" Grid.Row="1"/>
-            <TextBlock HorizontalAlignment="Left" Margin="5,5,0,0" Grid.Row="2" Text="Пароль" TextWrapping="Wrap" VerticalAlignment="Top"/>
-            <Button Content="Открыть фаил" Command="{Binding OpenDecrypt}" Margin="5,0,5,0" Grid.Row="3" VerticalAlignment="Center" Grid.Column="1"/>
-            <TextBlock HorizontalAlignment="Left" Margin="5,5,0,0" Text="Путь к файлу" TextWrapping="Wrap" VerticalAlignment="Top"/>
-        </Grid>
-
-        <TabControl Margin="0,0,0,0" Grid.Row="1">
+        <TabControl Margin="0,0,0,0">
             <TabItem Header="Текст">
                 <Grid>
                     <Grid.RowDefinitions>
@@ -259,5 +231,16 @@
                 </Grid>
             </TabItem>
         </TabControl>
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Button Content="Сохранить" Command="{Binding KeyEnter}" Margin="0,0,20,0" VerticalAlignment="Center" Height="40" Grid.Column="3" Width="100"/>
+            <Button Content="Главная окно" Command="{Binding LaunchWindow}" Margin="20,0,0,0" VerticalAlignment="Center" Height="40" Width="100"/>
+            <Button Content="Сменить пароль" Margin="20,0,20,0" VerticalAlignment="Center" Height="40" Grid.Column="2" Width="100" IsEnabled="False"/>
+        </Grid>
     </Grid>
 </UserControl>

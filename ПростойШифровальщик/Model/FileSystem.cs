@@ -48,7 +48,7 @@ namespace ПростойШифровальщик.Model
             catch { }
                 // Папки будут идти в начале
                 foreach (var dir in re)
-                    yield return WindowFileSelection.FileSystemS(dir);
+                    yield return WindowFileSelection.FileSystemValue(dir);
                 // Файлы потом
                 /*foreach (var file in Directory.EnumerateFiles(path))
                     yield return new FileSystemEntry(Path.GetFileName(file));*/
@@ -63,7 +63,7 @@ namespace ПростойШифровальщик.Model
             catch { }
             // Файлы потом
             foreach (var file in re)
-                yield return WindowFileSelection.FileSystemS(file);
+                yield return WindowFileSelection.FileSystemValue(file);
         }
 
         string _Name;
