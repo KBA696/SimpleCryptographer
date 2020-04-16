@@ -240,7 +240,7 @@
             </Grid.ColumnDefinitions>
             <Button Content="Сохранить" Command="{Binding KeyEnter}" Margin="0,0,20,0" VerticalAlignment="Center" Height="40" Grid.Column="3" Width="100"/>
             <Button Content="Главная окно" Command="{Binding LaunchWindow}" Margin="20,0,0,0" VerticalAlignment="Center" Height="40" Width="100"/>
-            <Button Content="Сменить пароль" Margin="20,0,20,0" VerticalAlignment="Center" Height="40" Grid.Column="2" Width="100" IsEnabled="False"/>
+            <Button Content="Сменить пароль"  Command="{Binding PasswordChange}" Margin="20,0,20,0" VerticalAlignment="Center" Height="40" Grid.Column="2" Width="100" IsEnabled="False"/>
         </Grid>
     </Grid>
 </UserControl>

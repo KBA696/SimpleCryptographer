@@ -501,29 +501,26 @@ namespace ПростойШифровальщик.ViewModel
 
         #endregion
 
-        ICommand _Window_Closing1;
-        public ICommand Window_Closing1
+        /// <summary>
+        /// Действия перед закрытием окна
+        /// </summary>
+        /// <param name="e"></param>
+        public void Closing(CancelEventArgs e)
         {
-            get
+            if (changedFile)
             {
-                return _Window_Closing1 ?? (_Window_Closing1 = new RelayCommand<CancelEventArgs>(e =>
+                switch (MessageBox.Show("Были внесены или изменены какието данные но они небыли сохронены. Они будут утерены при закрытии. Сохранить фаил?", "Фаил был изменен.", MessageBoxButton.YesNoCancel, MessageBoxImage.Error, MessageBoxResult.No))
                 {
-                    if (changedFile)
-                    {
-                    switch (MessageBox.Show("Были внесены или изменены какието данные но они небыли сохронены. Они будут утерены при закрытии. Сохранить фаил?", "Фаил был изменен.", MessageBoxButton.YesNoCancel, MessageBoxImage.Error, MessageBoxResult.No))
-                    {
-                        case MessageBoxResult.Yes:
-                            if (KeyEnter.CanExecute(null))
-                            {
-                                KeyEnter.Execute(null);
-                            }
-                            break;
-                        case MessageBoxResult.Cancel:
-                            e.Cancel = true;
-                            break;
-                    }
-                    }
-                }));
+                    case MessageBoxResult.Yes:
+                        if (KeyEnter.CanExecute(null))
+                        {
+                            KeyEnter.Execute(null);
+                        }
+                        break;
+                    case MessageBoxResult.Cancel:
+                        e.Cancel = true;
+                        break;
+                }
             }
         }
 
@@ -538,5 +535,18 @@ namespace ПростойШифровальщик.ViewModel
                 }));
             }
         }
+
+        ICommand _PasswordChange;
+        public ICommand PasswordChange
+        {
+            get
+            {
+                return _PasswordChange ?? (_PasswordChange = new RelayCommand<CancelEventArgs>(e =>
+                {
+
+                }));
+            }
+        }
+
     }
 }
