@@ -23,7 +23,7 @@ namespace ПростойШифровальщик.ViewModel
         {
             зкувб.Dela(this);
         }
-
+        //удолить файлы
         void Dela(FilesDataClass filesDataClass)
         {
             filesData.Items.Remove(filesDataClass.filesData);

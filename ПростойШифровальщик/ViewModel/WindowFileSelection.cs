@@ -290,17 +290,17 @@ namespace ПростойШифровальщик.ViewModel
         /// <summary>
         /// Пароль от файла
         /// </summary>
-        string _Key = "";
+        string _FilePassword = "";
         /// <summary>
         /// Пароль от файла
         /// </summary>
-        public string Key
+        public string FilePassword
         {
-            get { return _Key; }
+            get { return _FilePassword; }
             set
             {
-                if (value == _Key) return;
-                _Key = value;
+                if (value == _FilePassword) return;
+                _FilePassword = value;
                 OnPropertyChanged();
             }
         }
@@ -336,9 +336,33 @@ namespace ПростойШифровальщик.ViewModel
                 {
                     if (!string.IsNullOrEmpty(FullPath) && !string.IsNullOrEmpty(FileName))
                     {
-                        mainWindow.Content = new View.WindowCryptography() { DataContext = new WindowCryptography(mainWindow, FullPath + "\\" + FileName, Key) };
+                        var (name, error) = WindowCryptography.GetTuple(mainWindow, FullPath + "\\" + FileName, FilePassword);
+                        if (string.IsNullOrEmpty(error))
+                        {
+                            mainWindow.Content = new View.WindowCryptography() { DataContext = name };
+                        }
+                        else
+                        {
+                            MessageBox.Show(error);
+                        }
+                        
                     }
                 }, b => !string.IsNullOrEmpty(FullPath) && !string.IsNullOrEmpty(FileName)));
+            }
+        }
+
+        ICommand _FileNameEnter;
+        /// <summary>
+        /// Нажатие на Enter в текстовом поле с именем файла
+        /// </summary>
+        public ICommand FileNameEnter
+        {
+            get
+            {
+                return _FileNameEnter ?? (_FileNameEnter = new RelayCommand<object>(a =>
+                {
+                    ((UIElement)a).Focus();
+                }));
             }
         }
         #endregion

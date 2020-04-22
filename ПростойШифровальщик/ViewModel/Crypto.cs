@@ -7,9 +7,33 @@ using System.Threading.Tasks;
 
 namespace ПростойШифровальщик.ViewModel
 {
-    class Crypto
+    public class Crypto
     {
-        public static byte[] EncryptStringToBytes(byte[] plainText, SymmetricAlgorithm symmetricAlgorithm)
+        ICryptoTransform CreateEncryptor;
+        ICryptoTransform CreateDecryptor;
+        public Crypto(string password)
+        {
+            using (var rijAlg = Rijndael.Create())
+            {
+                var salt = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+                Rfc2898DeriveBytes pdb = new Rfc2898DeriveBytes(password, salt);
+                rijAlg.Key = pdb.GetBytes(32);
+                rijAlg.IV = pdb.GetBytes(16);
+
+                // Encrypt the string to an array of bytes.
+                CreateEncryptor = rijAlg.CreateEncryptor();
+                CreateDecryptor = rijAlg.CreateDecryptor();
+            }
+
+        }
+
+
+        /// <summary>
+        /// Зашифровка
+        /// </summary>
+        /// <param name="plainText"></param>
+        /// <returns></returns>
+        public byte[] EncryptStringToBytes(byte[] plainText)
         {
             byte[] encrypted;
             // Create an Rijndael object
@@ -18,7 +42,7 @@ namespace ПростойШифровальщик.ViewModel
                 // Create the streams used for encryption.
                 using (MemoryStream msEncrypt = new MemoryStream())
                 {
-                    using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, symmetricAlgorithm.CreateEncryptor(), CryptoStreamMode.Write))
+                    using (CryptoStream csEncrypt = new CryptoStream(msEncrypt, CreateEncryptor, CryptoStreamMode.Write))
                     {
                         using (BinaryWriter swEncrypt = new BinaryWriter(csEncrypt))
                         {
@@ -33,7 +57,12 @@ namespace ПростойШифровальщик.ViewModel
             return encrypted;
         }
 
-        public static byte[] DecryptStringFromBytes(byte[] cipherText, SymmetricAlgorithm symmetricAlgorithm)
+        /// <summary>
+        /// Разшифровка
+        /// </summary>
+        /// <param name="cipherText"></param>
+        /// <returns></returns>
+        public byte[] DecryptStringFromBytes(byte[] cipherText)
         {
             // Declare the string used to hold
             // the decrypted text.
@@ -42,7 +71,7 @@ namespace ПростойШифровальщик.ViewModel
                 // Create the streams used for decryption.
                 using (MemoryStream msDecrypt = new MemoryStream(cipherText))
                 {
-                    using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, symmetricAlgorithm.CreateDecryptor(), CryptoStreamMode.Read))
+                    using (CryptoStream csDecrypt = new CryptoStream(msDecrypt, CreateDecryptor, CryptoStreamMode.Read))
                     {
                         using (MemoryStream msDecrypt1 = new MemoryStream())
                         {

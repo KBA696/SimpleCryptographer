@@ -199,10 +199,17 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <Button Command="{Binding CreateOrOpen}" Content="{Binding ButtonName}" HorizontalAlignment="Right" Margin="0,20,40,20" VerticalAlignment="Top" Grid.Column="2" Grid.RowSpan="2" Height="40" Width="160" HorizontalContentAlignment="Center"/>
-            <TextBox HorizontalAlignment="Stretch" Margin="10,0,20,0" Text="{Binding FileName, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" VerticalAlignment="Center" Grid.Column="1"/>
-            <PasswordBox HorizontalAlignment="Stretch" Margin="10,0,20,0" VerticalAlignment="Center" Grid.Row="1" Grid.Column="1">
+            <TextBox HorizontalAlignment="Stretch" Margin="10,0,20,0" Text="{Binding FileName, UpdateSourceTrigger=PropertyChanged}" TextWrapping="Wrap" VerticalAlignment="Center" Grid.Column="1">
+                <TextBox.InputBindings>
+                    <KeyBinding Key="Enter" Command="{Binding FileNameEnter}" CommandParameter="{Binding ElementName=yyy}"/>
+                </TextBox.InputBindings>
+            </TextBox>
+            <PasswordBox x:Name="yyy"  HorizontalAlignment="Stretch" Margin="10,0,20,0" VerticalAlignment="Center" Grid.Row="1" Grid.Column="1">
+                <PasswordBox.InputBindings>
+                    <KeyBinding Key="Enter" Command="{Binding CreateOrOpen}"/>
+                </PasswordBox.InputBindings>
                 <c:Interaction.Behaviors>
-                    <MVVM:PasswordBoxBehavior Password="{Binding Key, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                    <MVVM:PasswordBoxBehavior Password="{Binding FilePassword, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                 </c:Interaction.Behaviors>
             </PasswordBox>
             <TextBlock HorizontalAlignment="Right" Margin="0,0,20,0" Text="Имя зашифрованного файла" TextWrapping="Wrap" VerticalAlignment="Center"/>

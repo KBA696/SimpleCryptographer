@@ -4,7 +4,6 @@ using System;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -18,22 +17,26 @@ namespace ПростойШифровальщик.ViewModel
     {
         readonly MainWindow mainWindow;
         readonly string addressFile;
-        readonly string key;
+        Crypto key;
 
-        public WindowCryptography(MainWindow mainWindow, string addressFile, string key)
+        WindowCryptography(MainWindow mainWindow, string addressFile, string key)
         {
             this.mainWindow = mainWindow;
             this.addressFile = addressFile;
-            this.key = key;
-            root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(FilesData, null) };
+            this.key = new Crypto(key);
+        }
 
+        public static (WindowCryptography name, string error) GetTuple(MainWindow mainWindow, string addressFile, string key)
+        {
+            WindowCryptography windowCryptography = new WindowCryptography(mainWindow, addressFile, key);
 
+            windowCryptography.root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(windowCryptography.FilesData, null) };
 
-            UserData = new UserData();
+            windowCryptography.UserData = new UserData();
 
-            DataFile = new DataFile();
-            FilesData = new FilesData() { Name = "0", Items = new ObservableCollection<FilesData>() { new FilesData() { Name = "Главная" } } };
-            root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(FilesData, null) };
+            windowCryptography.DataFile = new DataFile();
+            windowCryptography.FilesData = new FilesData() { Name = "0", Items = new ObservableCollection<FilesData>() { new FilesData() { Name = "Главная" } } };
+            windowCryptography.root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(windowCryptography.FilesData, null) };
             if (System.IO.File.Exists(addressFile))
             {
                 try
@@ -45,79 +48,70 @@ namespace ПростойШифровальщик.ViewModel
                         {
                             using (StreamReader writer = new StreamReader(readmeEntry.Open()))
                             {
-                                DataFile = new DataFile().StreamToClass(writer.BaseStream, SerializerFormat.Binary);
+                                windowCryptography.DataFile = new DataFile().StreamToClass(writer.BaseStream, SerializerFormat.Binary);
                             }
                         }
                     }
                 }
                 catch (System.IO.IOException)
                 {
-                    MessageBox.Show("Фаил уже открыт какой-то программой");
-
+                    return (name: null, error: "Фаил уже открыт какой-то программой");
                 }
                 catch
                 {
-                    MessageBox.Show("Фаил не удалось прочитать");
-                    DataFile = new DataFile();
+                    return (name: null, error: "Фаил не удалось прочитать");
                 }
-
 
                 try
                 {
-                    using (var rijAlg = Rijndael.Create())
+                    windowCryptography.DataFile.EncryptedClass = windowCryptography.key.DecryptStringFromBytes(windowCryptography.DataFile.EncryptedClass);
+
+                    if (windowCryptography.DataFile.EncryptedFiles != null)
                     {
-                        var salt = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-                        Rfc2898DeriveBytes pdb = new Rfc2898DeriveBytes(key, salt);
-                        rijAlg.Key = pdb.GetBytes(32);
-                        rijAlg.IV = pdb.GetBytes(16);
+                        windowCryptography.DataFile.EncryptedFiles = windowCryptography.key.DecryptStringFromBytes(windowCryptography.DataFile.EncryptedFiles);
+                        windowCryptography.FilesData = windowCryptography.DataFile.EncryptedFiles?.BytesToClass<FilesData>(SerializerFormat.Binary);
 
-                        // Decrypt the bytes to a string.
-                        DataFile.EncryptedClass = Crypto.DecryptStringFromBytes(DataFile.EncryptedClass, rijAlg);
-
-                        if (DataFile.EncryptedFiles != null)
-                        {
-                            DataFile.EncryptedFiles = Crypto.DecryptStringFromBytes(DataFile.EncryptedFiles, rijAlg);
-                            FilesData = DataFile.EncryptedFiles?.BytesToClass<FilesData>(SerializerFormat.Binary);
-
-                            root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(FilesData, null) };
-                        }
+                        windowCryptography.root = new ObservableCollection<FilesDataClass>() { new FilesDataClass(windowCryptography.FilesData, null) };
                     }
 
-                    UserData = DataFile.EncryptedClass?.BytesToClass<UserData>(SerializerFormat.Binary);
+
+                    windowCryptography.UserData = windowCryptography.DataFile.EncryptedClass?.BytesToClass<UserData>(SerializerFormat.Binary);
 
                     changedFile = false;
                 }
                 catch (Exception)
                 {
-                    MessageBox.Show("Пароль не верен");
+                    return (name: null, error: "Пароль не верен");
                 }
             }
-            SomeCollection.Clear();
+            windowCryptography.SomeCollection.Clear();
 
-            if (UserData.InformationGroup == null)
+            if (windowCryptography.UserData.InformationGroup == null)
             {
-                UserData.InformationGroup = new System.Collections.Generic.List<InformationGroup>();
+                windowCryptography.UserData.InformationGroup = new System.Collections.Generic.List<InformationGroup>();
             }
 
-            foreach (var item in UserData.InformationGroup)
+            foreach (var item in windowCryptography.UserData.InformationGroup)
             {
-                SomeCollection.Add(new View.SectionDocument() { DataContext = new ViewModel.SectionDocument(item, SomeCollection, UserData?.InformationGroup) });
+                windowCryptography.SomeCollection.Add(new View.SectionDocument() { DataContext = new ViewModel.SectionDocument(item, windowCryptography.SomeCollection, windowCryptography.UserData?.InformationGroup) });
             }
-            OnPropertyChanged(nameof(GeneralText));
+            windowCryptography.OnPropertyChanged(nameof(GeneralText));
 
             if (!System.IO.File.Exists(addressFile))
             {
-                if (KeyEnter.CanExecute(null))
+                if (windowCryptography.KeyEnter.CanExecute(null))
                 {
-                    KeyEnter.Execute(null);
+                    windowCryptography.KeyEnter.Execute(null);
                 }
             }
+
+            return (name: windowCryptography, error: null);
         }
 
         /// <summary>
         /// Произошли изменения в файле
         /// </summary>
-        public static bool changedFile { get; private set; } = false;
+        static bool changedFile { get; set; } = false;
 
         /// <summary>
         /// При закрытии программы задать вопрос о сохранении файла
@@ -135,33 +129,16 @@ namespace ПростойШифровальщик.ViewModel
             {
                 return _KeyEnter ?? (_KeyEnter = new RelayCommand<object>(a =>
                 {
-                    /*if (ИзмененПароль)
-                    {
-                        RepeatPassword = "";
-                        ownedWindow = new View.RepeatPassword() { DataContext = this, Owner = App.window };
-                        ownedWindow.ShowDialog();
 
-                        if (RepeatPassword != key)
-                        {
-                            MessageBox.Show("Фаил не был сохранен. Пороли не совпали");
-                            return;
-                        }
-                    }*/
 
 
                     byte[] original = UserData?.ClassToBytes(SerializerFormat.Binary);
                     byte[] original1 = FilesData?.ClassToBytes(SerializerFormat.Binary);
-                    using (var rijAlg = Rijndael.Create())
-                    {
-                        var salt = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-                        Rfc2898DeriveBytes pdb = new Rfc2898DeriveBytes(key, salt);
-                        rijAlg.Key = pdb.GetBytes(32);
-                        rijAlg.IV = pdb.GetBytes(16);
 
-                        // Encrypt the string to an array of bytes.
-                        DataFile.EncryptedClass = Crypto.EncryptStringToBytes(original, rijAlg);
-                        DataFile.EncryptedFiles = Crypto.EncryptStringToBytes(original1, rijAlg);
-                    }
+                    // Encrypt the string to an array of bytes.
+                    DataFile.EncryptedClass = key.EncryptStringToBytes(original);
+                    DataFile.EncryptedFiles = key.EncryptStringToBytes(original1);
+
 
                     using (ZipArchive archive = new ZipArchive(File.Open(addressFile, FileMode.OpenOrCreate), ZipArchiveMode.Update))
                     {
@@ -262,7 +239,6 @@ namespace ПростойШифровальщик.ViewModel
             {
                 if (value == _names) return;
                 _names = value;
-                WindowCryptography.ChangedFile();
                 OnPropertyChanged();
             }
         }
@@ -354,16 +330,10 @@ namespace ПростойШифровальщик.ViewModel
                             Обозначение1.Items.Add(new FilesDataClass(fdd, Обозначение1));
 
                             byte[] original1 = Serializer.FileToBytes(te);
-                            using (var rijAlg = Rijndael.Create())
-                            {
-                                var salt = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-                                Rfc2898DeriveBytes pdb = new Rfc2898DeriveBytes(key, salt);
-                                rijAlg.Key = pdb.GetBytes(32);
-                                rijAlg.IV = pdb.GetBytes(16);
 
-                                // Encrypt the string to an array of bytes.
-                                original1 = Crypto.EncryptStringToBytes(original1, rijAlg);
-                            }
+                            // Encrypt the string to an array of bytes.
+                            original1 = key.EncryptStringToBytes(original1);
+
 
                             //AddressFile = dialog.FileName;
                             using (ZipArchive archive = new ZipArchive(File.Open(addressFile, FileMode.OpenOrCreate), ZipArchiveMode.Update))
@@ -464,30 +434,12 @@ namespace ПростойШифровальщик.ViewModel
 
                         plaintext = ReadAllBytes(readmeEntry.Open());
 
-                        byte[] ReadAllBytes(Stream instream)
-                        {
-                            if (instream is MemoryStream)
-                                return ((MemoryStream)instream).ToArray();
-
-                            using (var memoryStream = new MemoryStream())
-                            {
-                                instream.CopyTo(memoryStream);
-                                return memoryStream.ToArray();
-                            }
-                        }
                     }
                 }
 
-                using (var rijAlg = Rijndael.Create())
-                {
-                    var salt = new byte[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-                    Rfc2898DeriveBytes pdb = new Rfc2898DeriveBytes(key, salt);
-                    rijAlg.Key = pdb.GetBytes(32);
-                    rijAlg.IV = pdb.GetBytes(16);
+                // Encrypt the string to an array of bytes.
+                plaintext = key.DecryptStringFromBytes(plaintext);
 
-                    // Encrypt the string to an array of bytes.
-                    plaintext = Crypto.DecryptStringFromBytes(plaintext, rijAlg);
-                }
 
                 System.IO.File.WriteAllBytes(st + @"\" + s.Name, plaintext);
             }
@@ -499,6 +451,157 @@ namespace ПростойШифровальщик.ViewModel
 
         }
 
+        byte[] ReadAllBytes(Stream instream)
+        {
+            if (instream is MemoryStream)
+                return ((MemoryStream)instream).ToArray();
+
+            using (var memoryStream = new MemoryStream())
+            {
+                instream.CopyTo(memoryStream);
+                return memoryStream.ToArray();
+            }
+        }
+        #endregion
+
+        #region Генератор паролей
+        string _GeneratedPassword;
+        public string GeneratedPassword
+        {
+            get { return _GeneratedPassword; }
+            set
+            {
+                if (value == _GeneratedPassword) return;
+                _GeneratedPassword = value;
+                OnPropertyChanged();
+            }
+        }
+
+        bool _Symbols = true;
+        public bool Symbols
+        {
+            get { return _Symbols; }
+            set
+            {
+                if (value == _Symbols) return;
+                _Symbols = value;
+                OnPropertyChanged();
+            }
+        }
+
+        bool _Numbers = true;
+        public bool Numbers
+        {
+            get { return _Numbers; }
+            set
+            {
+                if (value == _Numbers) return;
+                _Numbers = value;
+                OnPropertyChanged();
+            }
+        }
+
+        bool _А_Я = true;
+        public bool А_Я
+        {
+            get { return _А_Я; }
+            set
+            {
+                if (value == _А_Я) return;
+                _А_Я = value;
+                OnPropertyChanged();
+            }
+        }
+
+        bool _а_я = true;
+        public bool а_я
+        {
+            get { return _а_я; }
+            set
+            {
+                if (value == _а_я) return;
+                _а_я = value;
+                OnPropertyChanged();
+            }
+        }
+
+        bool _A_Z = true;
+        public bool A_Z
+        {
+            get { return _A_Z; }
+            set
+            {
+                if (value == _A_Z) return;
+                _A_Z = value;
+                OnPropertyChanged();
+            }
+        }
+
+        bool _a_z = true;
+        public bool a_z
+        {
+            get { return _a_z; }
+            set
+            {
+                if (value == _a_z) return;
+                _a_z = value;
+                OnPropertyChanged();
+            }
+        }
+
+        int _NumberCharacters = 16;
+        public int NumberCharacters
+        {
+            get { return _NumberCharacters; }
+            set
+            {
+                if (value == _NumberCharacters) return;
+                _NumberCharacters = value;
+                OnPropertyChanged();
+            }
+        }
+
+        string _ItsSymbol = "";
+        public string ItsSymbol
+        {
+            get { return _ItsSymbol; }
+            set
+            {
+                if (value == _ItsSymbol) return;
+                _ItsSymbol = value;
+                OnPropertyChanged();
+            }
+        }
+
+        ICommand _StartGeneratedPassword;
+        public ICommand StartGeneratedPassword
+        {
+            get
+            {
+                return _StartGeneratedPassword ?? (_StartGeneratedPassword = new RelayCommand<object>(a =>
+                {
+                    GeneratedPassword = "";
+                    string abc = ItsSymbol;
+                    if (a_z)
+                        abc += "abcdefghijklmnopqrstuvwxyz";
+                    if (A_Z)//использовать заглавные
+                        abc += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+                    if (а_я)
+                        abc += "абвгдеёжзийклмнопрстуфхцчшщъыьэюя";
+                    if (А_Я)//использовать заглавные
+                        abc += "АБВГДЕЁЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯ";
+                    if (Symbols)//использовать спецсимволы
+                        abc += " !@#$%^&*()";
+                    if (Numbers)//юзать цифры
+                        abc += "0123456789";
+                    Random rnd = new Random();
+                    for (int i = 0; i < NumberCharacters; i++)
+                    {
+                        GeneratedPassword += abc[rnd.Next(abc.Length)];
+                    }
+                }, b => (Symbols || Numbers || А_Я || а_я || A_Z || a_z || ItsSymbol.Length > 0) && NumberCharacters > 0));
+            }
+        }
         #endregion
 
         /// <summary>
@@ -529,10 +632,34 @@ namespace ПростойШифровальщик.ViewModel
         {
             get
             {
-                return _LaunchWindow ?? (_LaunchWindow = new RelayCommand<CancelEventArgs>(e =>
+                return _LaunchWindow ?? (_LaunchWindow = new RelayCommand<object>(e =>
                 {
                     mainWindow.Content = new View.WindowFileSelection() { DataContext = new WindowFileSelection(mainWindow) };
                 }));
+            }
+        }
+
+        string _Password = "";
+        public string Password
+        {
+            get { return _Password; }
+            set
+            {
+                if (value == _Password) return;
+                _Password = value;
+                OnPropertyChanged();
+            }
+        }
+
+        string _RepeatPassword = "";
+        public string RepeatPassword
+        {
+            get { return _RepeatPassword; }
+            set
+            {
+                if (value == _RepeatPassword) return;
+                _RepeatPassword = value;
+                OnPropertyChanged();
             }
         }
 
@@ -541,12 +668,93 @@ namespace ПростойШифровальщик.ViewModel
         {
             get
             {
-                return _PasswordChange ?? (_PasswordChange = new RelayCommand<CancelEventArgs>(e =>
+                return _PasswordChange ?? (_PasswordChange = new RelayCommand<object>(e =>
                 {
-
+                    new View.RepeatPassword() { DataContext = this, Owner = App.window }.ShowDialog();
                 }));
             }
         }
 
+        ICommand _ChangePasswordPermanently;
+        public ICommand ChangePasswordPermanently
+        {
+            get
+            {
+                return _ChangePasswordPermanently ?? (_ChangePasswordPermanently = new RelayCommand<object>(a =>
+                {
+
+                    if (Password != RepeatPassword)
+                    {
+                        MessageBox.Show("Пороли не совпали");
+                        return;
+                    }
+
+                    var newKey = new Crypto(Password);
+
+                    using (ZipArchive archive = new ZipArchive(File.Open(addressFile, FileMode.OpenOrCreate), ZipArchiveMode.Update))
+                    {
+                        //HashSet<string> directories = new HashSet<string>();
+                        var fd = archive.Entries.ToArray();
+                        foreach (var zipArchiveEntry in fd)
+                        {
+                            if (zipArchiveEntry.FullName != "main")
+                            {
+                                string FullName = zipArchiveEntry.FullName;
+                                //string zipDir = zipArchiveEntry.FullName.Substring(0, zipArchiveEntry.FullName.Length - zipArchiveEntry.Name.Length);
+                                //if (zipDir != "") directories.Add(zipDir);
+                                var gf = zipArchiveEntry.Open();
+                                var plaintext = ReadAllBytes(gf);
+                                gf.Close();
+                                plaintext = key.DecryptStringFromBytes(plaintext);
+
+                                plaintext = newKey.EncryptStringToBytes(plaintext);
+
+                                //ZipArchiveEntry readmeEntry1 = archive.GetEntry(zipArchiveEntry.FullName);
+                                zipArchiveEntry.Delete();
+
+                                var zipArchiveEntry1 = archive.CreateEntry(FullName);
+                                using (StreamWriter writer = new StreamWriter(zipArchiveEntry1.Open()))
+                                {
+                                    writer.BaseStream.Write(plaintext, 0, plaintext.Length);
+                                }
+                            }
+
+                        }
+
+                        //Сделать методом
+                        byte[] original = UserData?.ClassToBytes(SerializerFormat.Binary);
+                        byte[] original1 = FilesData?.ClassToBytes(SerializerFormat.Binary);
+
+                        // Encrypt the string to an array of bytes.
+                        DataFile.EncryptedClass = newKey.EncryptStringToBytes(original);
+                        DataFile.EncryptedFiles = newKey.EncryptStringToBytes(original1);
+                        ZipArchiveEntry readmeEntry = archive.GetEntry("main");
+                        readmeEntry?.Delete();
+
+                        readmeEntry = archive.CreateEntry("main");
+                        DataFile.ClassToStream(readmeEntry.Open(), SerializerFormat.Binary);
+
+                    }
+
+                    /*void RenameEntry(this ZipArchive archive, string oldName, string newName)
+                    {
+                        ZipArchiveEntry oldEntry = archive.GetEntry(oldName),
+                            newEntry = archive.CreateEntry(newName);
+
+                        using (Stream oldStream = oldEntry.Open())
+                        using (Stream newStream = newEntry.Open())
+                        {
+                            oldStream.CopyTo(newStream);
+                        }
+
+                        oldEntry.Delete();
+                    }*/
+                    key = newKey;
+                    RepeatPassword = Password = "";
+                    ((Window)a).Close();
+                    MessageBox.Show("Пороль изменен");
+                }));
+            }
+        }
     }
 }
